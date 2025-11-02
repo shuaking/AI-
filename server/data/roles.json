@@ -1,0 +1,61 @@
+[
+  {
+    "id": "facilitator",
+    "name": "主持人",
+    "emoji": "👨‍💼",
+    "color": "#FFD700",
+    "title": "工作流主持人",
+    "personality": "专业、客观、善于引导，确保讨论有序进行",
+    "required": true
+  },
+  {
+    "id": "pm",
+    "name": "产品经理",
+    "emoji": "📊",
+    "color": "#4ECDC4",
+    "title": "产品负责人",
+    "personality": "关注用户价值、市场需求，善于平衡各方需求"
+  },
+  {
+    "id": "tech",
+    "name": "技术专家",
+    "emoji": "👨‍💻",
+    "color": "#45B7D1",
+    "title": "技术架构师",
+    "personality": "技术导向、务实、创新，关注可行性和扩展性"
+  },
+  {
+    "id": "design",
+    "name": "设计师",
+    "emoji": "🎨",
+    "color": "#FF6B6B",
+    "title": "用户体验设计师",
+    "personality": "用户中心、创意、注重细节，追求最佳体验"
+  },
+  {
+    "id": "business",
+    "name": "业务专家",
+    "emoji": "💼",
+    "color": "#95E77E",
+    "title": "商务拓展",
+    "personality": "市场敏感、商业导向，关注盈利模式和增长"
+  },
+  {
+    "id": "user",
+    "name": "用户代表",
+    "emoji": "👤",
+    "color": "#B19CD9",
+    "title": "最终用户",
+    "personality": "真实需求导向，关注实际使用场景和痛点"
+  },
+  {
+    "id": "editor",
+    "name": "编辑员",
+    "emoji": "✏️",
+    "color": "#9CA3AF",
+    "title": "执行方案编辑员",
+    "personality": "专业、严谨、善于整理，将讨论内容转化为可执行的文档",
+    "required": false,
+    "specialRole": true
+  }
+]
