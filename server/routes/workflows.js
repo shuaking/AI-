@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { validateWorkflow } = require('../utils/validators');
 
-function createWorkflowsRouter(jsonStore) {
+function createWorkflowsRouter(jsonStore, io) {
   const FILENAME = 'workflows.json';
 
   router.get('/', async (req, res, next) => {
@@ -74,6 +74,14 @@ function createWorkflowsRouter(jsonStore) {
       workflows[id] = workflow;
       await jsonStore.write(FILENAME, workflows);
 
+      // Emit Socket.IO event
+      io.emit('workflows:updated', { 
+        action: 'create', 
+        id, 
+        data: { id, ...workflow },
+        timestamp: Date.now()
+      });
+
       res.status(201).json({
         success: true,
         message: 'Workflow created successfully',
@@ -112,6 +120,14 @@ function createWorkflowsRouter(jsonStore) {
       workflows[id] = workflow;
       await jsonStore.write(FILENAME, workflows);
 
+      // Emit Socket.IO event
+      io.emit('workflows:updated', { 
+        action: 'update', 
+        id, 
+        data: { id, ...workflow },
+        timestamp: Date.now()
+      });
+
       res.json({
         success: true,
         message: 'Workflow updated successfully',
@@ -137,6 +153,13 @@ function createWorkflowsRouter(jsonStore) {
 
       delete workflows[id];
       await jsonStore.write(FILENAME, workflows);
+
+      // Emit Socket.IO event
+      io.emit('workflows:updated', { 
+        action: 'delete', 
+        id,
+        timestamp: Date.now()
+      });
 
       res.json({
         success: true,

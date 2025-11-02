@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { validateSettings } = require('../utils/validators');
 
-function createSettingsRouter(jsonStore) {
+function createSettingsRouter(jsonStore, io) {
   const FILENAME = 'settings.json';
 
   router.get('/', async (req, res, next) => {
@@ -55,6 +55,13 @@ function createSettingsRouter(jsonStore) {
       }
 
       await jsonStore.write(FILENAME, settings);
+
+      // Emit Socket.IO event
+      io.emit('settings:updated', { 
+        action: 'updateVariables', 
+        data: settings,
+        timestamp: Date.now()
+      });
 
       res.json({
         success: true,
@@ -109,6 +116,14 @@ function createSettingsRouter(jsonStore) {
       settings.globalVariables[key] = value;
       await jsonStore.write(FILENAME, settings);
 
+      // Emit Socket.IO event
+      io.emit('settings:updated', { 
+        action: 'updateVariable', 
+        key,
+        data: settings,
+        timestamp: Date.now()
+      });
+
       res.json({
         success: true,
         message: 'Variable updated successfully',
@@ -134,6 +149,14 @@ function createSettingsRouter(jsonStore) {
 
       delete settings.globalVariables[key];
       await jsonStore.write(FILENAME, settings);
+
+      // Emit Socket.IO event
+      io.emit('settings:updated', { 
+        action: 'deleteVariable', 
+        key,
+        data: settings,
+        timestamp: Date.now()
+      });
 
       res.json({
         success: true,
@@ -182,6 +205,13 @@ function createSettingsRouter(jsonStore) {
       }
 
       await jsonStore.write(FILENAME, settings);
+
+      // Emit Socket.IO event
+      io.emit('settings:updated', { 
+        action: 'updateApiConfigs', 
+        data: settings,
+        timestamp: Date.now()
+      });
 
       res.json({
         success: true,
@@ -247,6 +277,14 @@ function createSettingsRouter(jsonStore) {
 
       await jsonStore.write(FILENAME, settings);
 
+      // Emit Socket.IO event
+      io.emit('settings:updated', { 
+        action: 'updateApiConfig', 
+        name,
+        data: settings,
+        timestamp: Date.now()
+      });
+
       res.json({
         success: true,
         message: 'API config updated successfully',
@@ -272,6 +310,14 @@ function createSettingsRouter(jsonStore) {
 
       delete settings.customApiConfigs[name];
       await jsonStore.write(FILENAME, settings);
+
+      // Emit Socket.IO event
+      io.emit('settings:updated', { 
+        action: 'deleteApiConfig', 
+        name,
+        data: settings,
+        timestamp: Date.now()
+      });
 
       res.json({
         success: true,

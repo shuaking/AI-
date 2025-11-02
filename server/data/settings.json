@@ -1,4 +1,6 @@
 {
-  "globalVariables": {},
+  "globalVariables": {
+    "testVar": "testValue"
+  },
   "customApiConfigs": {}
 }

@@ -55,10 +55,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.use('/api/workflows', createWorkflowsRouter(jsonStore));
-app.use('/api/roles', createRolesRouter(jsonStore));
-app.use('/api/prompts', createPromptsRouter(jsonStore));
-app.use('/api/settings', createSettingsRouter(jsonStore));
+app.use('/api/workflows', createWorkflowsRouter(jsonStore, io));
+app.use('/api/roles', createRolesRouter(jsonStore, io));
+app.use('/api/prompts', createPromptsRouter(jsonStore, io));
+app.use('/api/settings', createSettingsRouter(jsonStore, io));
 
 app.use(errorHandler);
 

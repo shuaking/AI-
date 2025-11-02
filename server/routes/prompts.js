@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { validatePrompt } = require('../utils/validators');
 
-function createPromptsRouter(jsonStore) {
+function createPromptsRouter(jsonStore, io) {
   const FILENAME = 'prompts.json';
 
   router.get('/', async (req, res, next) => {
@@ -66,6 +66,13 @@ function createPromptsRouter(jsonStore) {
       prompts.push(prompt);
       await jsonStore.write(FILENAME, prompts);
 
+      // Emit Socket.IO event
+      io.emit('prompts:updated', { 
+        action: 'create', 
+        data: prompt,
+        timestamp: Date.now()
+      });
+
       res.status(201).json({
         success: true,
         message: 'Prompt created successfully',
@@ -115,6 +122,13 @@ function createPromptsRouter(jsonStore) {
       prompts[index] = prompt;
       await jsonStore.write(FILENAME, prompts);
 
+      // Emit Socket.IO event
+      io.emit('prompts:updated', { 
+        action: 'update', 
+        data: prompt,
+        timestamp: Date.now()
+      });
+
       res.json({
         success: true,
         message: 'Prompt updated successfully',
@@ -141,6 +155,13 @@ function createPromptsRouter(jsonStore) {
 
       prompts.splice(index, 1);
       await jsonStore.write(FILENAME, prompts);
+
+      // Emit Socket.IO event
+      io.emit('prompts:updated', { 
+        action: 'delete', 
+        id,
+        timestamp: Date.now()
+      });
 
       res.json({
         success: true,

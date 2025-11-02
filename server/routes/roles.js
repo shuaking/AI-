@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { validateRole } = require('../utils/validators');
 
-function createRolesRouter(jsonStore) {
+function createRolesRouter(jsonStore, io) {
   const FILENAME = 'roles.json';
 
   router.get('/', async (req, res, next) => {
@@ -66,6 +66,13 @@ function createRolesRouter(jsonStore) {
       roles.push(role);
       await jsonStore.write(FILENAME, roles);
 
+      // Emit Socket.IO event
+      io.emit('roles:updated', { 
+        action: 'create', 
+        data: role,
+        timestamp: Date.now()
+      });
+
       res.status(201).json({
         success: true,
         message: 'Role created successfully',
@@ -115,6 +122,13 @@ function createRolesRouter(jsonStore) {
       roles[index] = role;
       await jsonStore.write(FILENAME, roles);
 
+      // Emit Socket.IO event
+      io.emit('roles:updated', { 
+        action: 'update', 
+        data: role,
+        timestamp: Date.now()
+      });
+
       res.json({
         success: true,
         message: 'Role updated successfully',
@@ -150,6 +164,13 @@ function createRolesRouter(jsonStore) {
 
       roles.splice(index, 1);
       await jsonStore.write(FILENAME, roles);
+
+      // Emit Socket.IO event
+      io.emit('roles:updated', { 
+        action: 'delete', 
+        id,
+        timestamp: Date.now()
+      });
 
       res.json({
         success: true,

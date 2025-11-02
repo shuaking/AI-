@@ -186,6 +186,47 @@
             font-size: 0.8rem;
         }
 
+        /* 同步状态指示器 */
+        .sync-status {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 10px;
+            font-weight: 500;
+        }
+
+        .sync-status.connected {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+
+        .sync-status.connecting {
+            background: rgba(255, 193, 7, 0.2);
+            color: #FFC107;
+        }
+
+        .sync-status.syncing {
+            background: rgba(33, 150, 243, 0.2);
+            color: #2196F3;
+            animation: pulse 1.5s infinite;
+        }
+
+        .sync-status.offline {
+            background: rgba(244, 67, 54, 0.2);
+            color: #F44336;
+        }
+
+        .sync-status.disconnected {
+            background: rgba(158, 158, 158, 0.2);
+            color: #9E9E9E;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
         /* Tab切换 - 4个标签 */
         .tab-container {
             display: flex;
@@ -2230,7 +2271,7 @@
             <div class="panel-content">
                 <div class="panel-header">
                     <h1>🎯 AI工作流</h1>
-                    <p>智能交互 · 多角色协作</p>
+                    <p>智能交互 · 多角色协作 <span id="syncStatus" class="sync-status disconnected">未连接</span></p>
                 </div>
 
                 <!-- Tab切换 - 4个标签 -->
@@ -2612,6 +2653,14 @@
     <!-- Emoji选择器 -->
     <div class="emoji-picker" id="emojiPicker"></div>
 
+    <!-- Socket.IO Client -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- API Client and Sync Manager -->
+    <script src="/js/apiClient.js"></script>
+    <script src="/js/syncManager.js"></script>
+    <script src="/js/dataPersistence.js"></script>
+
     <script>
         // 🔒【安全警告】前端演示代码，API密钥会暴露！生产环境必须使用后端代理！
 
@@ -2659,7 +2708,9 @@
                 averageResponseTime: 0,
                 errorCount: 0
             },
-            availableModels: [] // 存储可用的模型列表
+            availableModels: [], // 存储可用的模型列表
+            syncStatus: 'disconnected', // 同步状态
+            isDataInitialized: false // 数据是否已初始化
         };
 
         // 预设工作流
@@ -2921,8 +2972,16 @@
         // 常用Emoji列表
         const commonEmojis = ['😀', '😎', '🤔', '👍', '👎', '💡', '🚀', '⭐', '🎯', '📈', '🔥', '💼', '🎨', '🔧', '📊', '🏆'];
 
+        // ========== 实时同步系统 ==========
+        const apiClient = new ApiClient('/api');
+        const syncManager = new SyncManager(apiClient);
+        const dataPersistence = new DataPersistence(apiClient, syncManager);
+
         // ========== 初始化 ==========
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 初始化同步系统
+            await initSyncSystem();
+            
             loadSavedConfig();
             initPanelControls();
             initKeyboardShortcuts();
@@ -2969,6 +3028,147 @@
                     showNotification('API调用异常，请检查网络连接', 'error');
                 }
             });
+        }
+
+        // 初始化同步系统
+        async function initSyncSystem() {
+            try {
+                console.log('[Sync] Initializing sync system...');
+                
+                // 连接Socket.IO
+                syncManager.connect();
+                
+                // 设置事件监听
+                syncManager.on('status:changed', (status) => {
+                    state.syncStatus = status;
+                    updateSyncStatusUI(status);
+                });
+                
+                syncManager.on('connected', () => {
+                    console.log('[Sync] Connected to server');
+                    showNotification('已连接到服务器', 'success');
+                });
+                
+                syncManager.on('disconnected', () => {
+                    console.log('[Sync] Disconnected from server');
+                    showNotification('与服务器断开连接', 'warning');
+                });
+                
+                syncManager.on('offline', () => {
+                    console.log('[Sync] Going offline');
+                    showNotification('网络连接已断开，将使用本地缓存', 'warning');
+                });
+                
+                syncManager.on('online', () => {
+                    console.log('[Sync] Back online');
+                    showNotification('网络已恢复，正在同步数据...', 'info');
+                });
+                
+                syncManager.on('sync:complete', () => {
+                    console.log('[Sync] Sync completed');
+                    showNotification('数据同步完成', 'success');
+                });
+                
+                // 监听服务器数据更新
+                syncManager.on('workflows:updated', (data) => {
+                    console.log('[Sync] Workflows updated from server', data);
+                    handleServerWorkflowUpdate(data);
+                });
+                
+                syncManager.on('roles:updated', (data) => {
+                    console.log('[Sync] Roles updated from server', data);
+                    handleServerRoleUpdate(data);
+                });
+                
+                syncManager.on('prompts:updated', (data) => {
+                    console.log('[Sync] Prompts updated from server', data);
+                    handleServerPromptUpdate(data);
+                });
+                
+                syncManager.on('settings:updated', (data) => {
+                    console.log('[Sync] Settings updated from server', data);
+                    handleServerSettingsUpdate(data);
+                });
+                
+                // 初始化数据
+                const defaults = {
+                    workflows: presetWorkflows,
+                    roles: presetRoles,
+                    prompts: promptTemplates,
+                    settings: { variables: {}, apiConfigs: {} }
+                };
+                
+                const data = await dataPersistence.initializeData(defaults);
+                console.log('[Sync] Data initialized', data);
+                
+                // 更新state，但保留预设的工作流和角色
+                // 合并自定义内容
+                state.customRoles = data.roles.filter(r => !presetRoles.find(pr => pr.id === r.id));
+                state.customPrompts = data.prompts.filter(p => !promptTemplates.find(pt => pt.id === p.id));
+                state.globalVariables = data.settings.variables || {};
+                state.customApiConfigs = data.settings.apiConfigs || {};
+                state.isDataInitialized = true;
+                
+                console.log('[Sync] Initialization complete');
+            } catch (error) {
+                console.error('[Sync] Failed to initialize sync system:', error);
+                showNotification('同步系统初始化失败，将使用本地模式', 'warning');
+            }
+        }
+
+        // 更新同步状态UI
+        function updateSyncStatusUI(status) {
+            const statusEl = document.getElementById('syncStatus');
+            if (!statusEl) return;
+            
+            statusEl.className = 'sync-status ' + status;
+            
+            const statusText = {
+                'connected': '已连接',
+                'connecting': '连接中',
+                'syncing': '同步中',
+                'offline': '离线',
+                'disconnected': '未连接'
+            };
+            
+            statusEl.textContent = statusText[status] || status;
+            console.log(`[Sync] Status: ${status}`);
+        }
+
+        // 处理服务器工作流更新
+        function handleServerWorkflowUpdate(data) {
+            // 避免覆盖未保存的本地修改
+            // 这里可以添加更复杂的冲突解决逻辑
+            console.log('[Sync] Processing workflow update from server', data);
+        }
+
+        // 处理服务器角色更新
+        function handleServerRoleUpdate(data) {
+            console.log('[Sync] Processing role update from server', data);
+            // 重新渲染角色相关UI
+            renderRoleChips();
+            renderRoleSelector();
+        }
+
+        // 处理服务器Prompt更新
+        function handleServerPromptUpdate(data) {
+            console.log('[Sync] Processing prompt update from server', data);
+            // 重新渲染Prompt相关UI
+            renderPromptLibrary();
+            renderMyPrompts();
+        }
+
+        // 处理服务器设置更新
+        function handleServerSettingsUpdate(data) {
+            console.log('[Sync] Processing settings update from server', data);
+            // 更新变量和API配置
+            if (data.data && data.data.globalVariables) {
+                state.globalVariables = data.data.globalVariables;
+                renderVariables();
+            }
+            if (data.data && data.data.customApiConfigs) {
+                state.customApiConfigs = data.data.customApiConfigs;
+            }
         }
 
         // 初始化自定义API功能 - 简化版
@@ -6126,8 +6326,10 @@ ${state.messages.slice(-5).map(m =>
                 // 更新平台选择器
                 updatePlatformSelectWithCustom();
 
-                // 保存到localStorage
-                localStorage.setItem('customApiConfigs', JSON.stringify(state.customApiConfigs));
+                // 保存到服务器和localStorage
+                dataPersistence.saveApiConfig(apiName, config).catch(err => {
+                    console.error('[CustomApi] Failed to save config:', err);
+                });
                 
                 // 设置为当前使用的API
                 state.currentPlatform = 'custom';
@@ -6181,8 +6383,13 @@ ${state.messages.slice(-5).map(m =>
                 return;
             }
 
-            delete state.customApiConfigs[state.currentCustomApi];
-            localStorage.setItem('customApiConfigs', JSON.stringify(state.customApiConfigs));
+            const apiName = state.currentCustomApi;
+            delete state.customApiConfigs[apiName];
+            
+            // 删除服务器数据
+            dataPersistence.deleteApiConfig(apiName).catch(err => {
+                console.error('[CustomApi] Failed to delete config:', err);
+            });
             
             // 清空表单
             clearCustomApiForm();
