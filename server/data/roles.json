@@ -1,12 +1,11 @@
 [
   {
     "id": "facilitator",
-    "name": "主持人",
+    "name": "主持人(已更新)",
     "emoji": "👨‍💼",
     "color": "#FFD700",
     "title": "工作流主持人",
-    "personality": "专业、客观、善于引导，确保讨论有序进行",
-    "required": true
+    "personality": "专业、客观、善于引导"
   },
   {
     "id": "pm",
