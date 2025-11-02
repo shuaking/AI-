@@ -2212,11 +2212,74 @@
             font-size: 0.6rem;
             z-index: 100;
         }
+
+        /* Socket状态指示器 */
+        .socket-status-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            z-index: 100;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            cursor: help;
+        }
+
+        .socket-status-indicator.connected {
+            background: rgba(0, 255, 136, 0.15);
+            border: 1px solid rgba(0, 255, 136, 0.4);
+            color: #00ff88;
+        }
+
+        .socket-status-indicator.connecting {
+            background: rgba(255, 193, 7, 0.15);
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            color: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+
+        .socket-status-indicator.reconnecting {
+            background: rgba(255, 152, 0, 0.15);
+            border: 1px solid rgba(255, 152, 0, 0.4);
+            color: #ff9800;
+            animation: pulse 1s infinite;
+        }
+
+        .socket-status-indicator.disconnected,
+        .socket-status-indicator.error {
+            background: rgba(244, 67, 54, 0.15);
+            border: 1px solid rgba(244, 67, 54, 0.4);
+            color: #f44336;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .socket-status-indicator {
+                top: 5px;
+                right: 5px;
+                font-size: 0.65rem;
+                padding: 4px 8px;
+            }
+        }
     </style>
 </head>
 <body>
     <!-- 版本标识 -->
     <div class="version-badge">v2.2 简化版</div>
+
+    <!-- Socket连接状态指示器 -->
+    <div id="socketStatusIndicator" class="socket-status-indicator disconnected">● Offline</div>
 
     <div class="app-container">
         <!-- ========== 左侧控制面板 ========== -->
@@ -2611,6 +2674,12 @@
 
     <!-- Emoji选择器 -->
     <div class="emoji-picker" id="emojiPicker"></div>
+
+    <!-- Socket.IO客户端库 -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- Socket客户端模块 -->
+    <script src="/js/socketClient.js"></script>
 
     <script>
         // 🔒【安全警告】前端演示代码，API密钥会暴露！生产环境必须使用后端代理！
