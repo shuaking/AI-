@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sync System Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #e0e0e0;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        #output {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #2196f3;
+            padding-left: 10px;
+        }
+        .log-success { border-left-color: #4caf50; }
+        .log-error { border-left-color: #f44336; }
+        .log-warning { border-left-color: #ff9800; }
+    </style>
+</head>
+<body>
+    <h1>Sync System Test</h1>
+    
+    <div class="section">
+        <h3>1. Load Modules</h3>
+        <button onclick="loadModules()">Load All Modules</button>
+        <div id="modules-status"></div>
+    </div>
+
+    <div class="section">
+        <h3>2. Test Queue Operations</h3>
+        <button onclick="testQueue()">Add to Queue</button>
+        <button onclick="showQueue()">Show Queue</button>
+        <button onclick="clearQueue()">Clear Queue</button>
+    </div>
+
+    <div class="section">
+        <h3>3. Test API Operations</h3>
+        <button onclick="testCreateRole()">Create Role (Online)</button>
+        <button onclick="testCreateRoleOffline()">Create Role (Simulated Offline)</button>
+    </div>
+
+    <div class="section">
+        <h3>4. Test Sync Manager</h3>
+        <button onclick="testFlushQueue()">Flush Queue</button>
+        <button onclick="testSocketEvent()">Simulate Socket Event</button>
+    </div>
+
+    <div id="output"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/apiClient.js"></script>
+    <script src="/js/socketClient.js"></script>
+    <script src="/js/syncQueue.js"></script>
+    <script src="/js/syncManager.js"></script>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.appendChild(entry);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function loadModules() {
+            const status = document.getElementById('modules-status');
+            let html = '<ul>';
+            
+            html += `<li>apiClient: ${typeof window.apiClient !== 'undefined' ? '✅' : '❌'}</li>`;
+            html += `<li>socketClient: ${typeof window.socketClient !== 'undefined' ? '✅' : '❌'}</li>`;
+            html += `<li>syncQueue: ${typeof window.syncQueue !== 'undefined' ? '✅' : '❌'}</li>`;
+            html += `<li>syncManager: ${typeof window.syncManager !== 'undefined' ? '✅' : '❌'}</li>`;
+            
+            html += '</ul>';
+            status.innerHTML = html;
+            
+            log('Modules loaded successfully', 'success');
+        }
+
+        function testQueue() {
+            if (!window.syncQueue) {
+                log('syncQueue not loaded', 'error');
+                return;
+            }
+
+            const testOp = {
+                resource: 'roles',
+                action: 'create',
+                payload: { id: 'test_' + Date.now(), name: 'Test Role' }
+            };
+
+            const result = window.syncQueue.enqueue(testOp);
+            log(`Enqueued operation: ${JSON.stringify(result)}`, result.success ? 'success' : 'error');
+        }
+
+        function showQueue() {
+            if (!window.syncQueue) {
+                log('syncQueue not loaded', 'error');
+                return;
+            }
+
+            const pending = window.syncQueue.getPending();
+            log(`Queue size: ${pending.length}`);
+            pending.forEach((op, i) => {
+                log(`  [${i}] ${op.resource} ${op.action} - ${op.id}`);
+            });
+        }
+
+        function clearQueue() {
+            if (!window.syncQueue) {
+                log('syncQueue not loaded', 'error');
+                return;
+            }
+
+            const result = window.syncQueue.clear();
+            log('Queue cleared', result.success ? 'success' : 'error');
+        }
+
+        async function testCreateRole() {
+            if (!window.apiClient) {
+                log('apiClient not loaded', 'error');
+                return;
+            }
+
+            const testRole = {
+                id: 'test_' + Date.now(),
+                name: 'Test Role',
+                emoji: '🧪',
+                color: '#2196f3',
+                title: 'Test',
+                personality: 'Testing role'
+            };
+
+            log('Creating role via API...');
+            const result = await window.apiClient.createRole(testRole);
+            log(`Result: ${JSON.stringify(result)}`, result.success ? 'success' : 'error');
+        }
+
+        async function testCreateRoleOffline() {
+            if (!window.apiClient) {
+                log('apiClient not loaded', 'error');
+                return;
+            }
+
+            log('Simulating offline mode...', 'warning');
+            
+            // Temporarily override isOnline
+            const originalIsOnline = window.apiClient.isOnline;
+            window.apiClient.isOnline = () => false;
+
+            const testRole = {
+                id: 'test_offline_' + Date.now(),
+                name: 'Offline Test Role',
+                emoji: '📴',
+                color: '#ff9800',
+                title: 'Offline Test',
+                personality: 'Testing offline'
+            };
+
+            const result = await window.apiClient.createRole(testRole);
+            log(`Result: ${JSON.stringify(result)}`, result.queued ? 'warning' : 'error');
+
+            // Restore original
+            window.apiClient.isOnline = originalIsOnline;
+            log('Restored online mode', 'info');
+        }
+
+        async function testFlushQueue() {
+            if (!window.syncManager) {
+                log('syncManager not loaded', 'error');
+                return;
+            }
+
+            log('Flushing queue...');
+            const result = await window.syncManager.flushQueue();
+            log(`Flush result: processed=${result.processed}, failed=${result.failed}, remaining=${result.remainingQueueSize}`, 
+                result.failed > 0 ? 'warning' : 'success');
+        }
+
+        function testSocketEvent() {
+            if (!window.syncManager) {
+                log('syncManager not loaded', 'error');
+                return;
+            }
+
+            const mockEvent = {
+                data: [
+                    { id: 'test_1', name: 'Role 1' },
+                    { id: 'test_2', name: 'Role 2' }
+                ],
+                timestamp: new Date().toISOString()
+            };
+
+            log('Simulating socket event...');
+            window.syncManager.handleSocketEvent('roles', mockEvent);
+            log('Socket event processed', 'success');
+        }
+
+        // Auto-load modules on start
+        setTimeout(() => {
+            loadModules();
+        }, 500);
+    </script>
+</body>
+</html>
