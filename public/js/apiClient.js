@@ -8,11 +8,16 @@
 (function(window) {
     'use strict';
 
-    const API_BASE_URL = window.location.origin;
+    // Get API base URL from runtime config, fallback to same-origin
+    const API_BASE_URL = (window.APP_CONFIG && window.APP_CONFIG.apiBaseUrl !== 'window.location.origin') 
+        ? window.APP_CONFIG.apiBaseUrl 
+        : window.location.origin;
     const API_PREFIX = '/api';
     const REQUEST_TIMEOUT = 10000; // 10 seconds
     const RETRY_ATTEMPTS = 1;
     const RETRY_DELAY = 1000; // 1 second
+
+    console.log('[ApiClient] Initialized with API base URL:', API_BASE_URL);
 
     // Cache keys for localStorage
     const CACHE_KEYS = {

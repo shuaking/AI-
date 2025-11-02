@@ -66,13 +66,20 @@ The server can be configured using environment variables:
 
 - `PORT`: Server port (default: 3000)
 - `HOST`: Server host (default: 0.0.0.0)
-- `CORS_ORIGIN`: CORS origin (default: *)
+- `CORS_ORIGINS`: Comma-separated list of allowed origins for CORS (default: *)
+- `SOCKET_ALLOWED_ORIGINS`: Comma-separated list of allowed origins for Socket.IO (default: uses CORS_ORIGINS)
 - `NODE_ENV`: Environment mode (development/production)
 
 ### Example with custom port:
 
 ```bash
 PORT=8080 npm start
+```
+
+### Example with CORS configuration:
+
+```bash
+CORS_ORIGINS="https://example.com,https://app.example.com" npm start
 ```
 
 ## Project Structure
@@ -188,6 +195,156 @@ A test page is available at `http://localhost:3000/test-api-client.html` to veri
 - Fetching workflows, roles, prompts, and settings
 - Saving and reading data
 - Online/offline status detection
+
+## Front/Back Separation
+
+The application supports deploying the frontend (static assets) and backend (API + Socket.IO) separately. This is useful when you want to host the frontend on Vercel, Netlify, or other static hosting platforms while running the backend on a separate server.
+
+### Architecture
+
+- **Frontend**: Static HTML, CSS, and JavaScript served from platforms like Vercel/Netlify
+- **Backend**: Node.js Express + Socket.IO server running on a separate server (e.g., DigitalOcean, AWS, Heroku)
+- **Communication**: Frontend connects to backend via REST API and WebSocket (Socket.IO)
+
+### Step 1: Configure Backend Server
+
+Deploy the backend server to your hosting platform and configure CORS to allow requests from your frontend domain(s):
+
+```bash
+# Allow single frontend domain
+CORS_ORIGINS="https://your-frontend.vercel.app" npm start
+
+# Allow multiple frontend domains
+CORS_ORIGINS="https://your-frontend.vercel.app,https://your-frontend.netlify.app" npm start
+
+# For development, allow all origins (NOT recommended for production)
+CORS_ORIGINS="*" npm start
+```
+
+**Important Security Notes:**
+- Never use `CORS_ORIGINS="*"` in production
+- Always specify exact domains you want to allow
+- Use HTTPS for production deployments
+- Keep your allowed origins list as restrictive as possible
+
+### Step 2: Generate Frontend Configuration
+
+Before deploying the frontend, generate the runtime configuration that tells the frontend where to find the backend:
+
+```bash
+# Set environment variables for your backend URLs
+export PUBLIC_API_URL="https://your-backend-api.com"
+export PUBLIC_SOCKET_URL="https://your-backend-api.com"
+
+# Generate the configuration file
+npm run build:frontend
+
+# (Optional) Validate the setup
+npm run validate:deploy
+```
+
+This creates `public/runtime-config.js` which the frontend will use to connect to your backend.
+
+### Step 3: Deploy Frontend to Vercel
+
+1. Push your code to GitHub, GitLab, or Bitbucket
+2. Import the project in Vercel
+3. Configure environment variables in Vercel project settings:
+   - `PUBLIC_API_URL`: Your backend API URL (e.g., `https://api.example.com`)
+   - `PUBLIC_SOCKET_URL`: Your backend Socket.IO URL (usually the same as API URL)
+4. Deploy settings:
+   - **Build Command**: `npm run build:frontend`
+   - **Output Directory**: `public`
+   - **Install Command**: `npm install`
+
+The `vercel.json` file is already configured for you.
+
+### Step 4: Deploy Frontend to Netlify
+
+1. Push your code to GitHub, GitLab, or Bitbucket
+2. Import the project in Netlify
+3. Configure environment variables in Netlify site settings:
+   - `PUBLIC_API_URL`: Your backend API URL (e.g., `https://api.example.com`)
+   - `PUBLIC_SOCKET_URL`: Your backend Socket.IO URL (usually the same as API URL)
+4. Deploy settings (already configured in `netlify.toml`):
+   - **Build Command**: `npm run build:frontend`
+   - **Publish Directory**: `public`
+
+### Step 5: Verify Deployment
+
+After deploying both frontend and backend, verify the connection:
+
+1. Open the frontend URL in your browser
+2. Open browser DevTools (F12) and check the Console
+3. Look for messages like:
+   ```
+   [Runtime Config] Configuration loaded: { apiBaseUrl: "...", socketUrl: "..." }
+   [ApiClient] Using API base URL: https://your-backend-api.com
+   [SocketClient] Connected with socket ID: ...
+   ```
+4. Test API connectivity:
+   - Create a workflow or role
+   - Verify data is saved to the backend
+5. Test WebSocket connectivity:
+   - Check the Socket.IO status indicator shows "● Online"
+   - Open the app in multiple browser tabs and verify real-time updates work
+
+### Local Development with Separated Deployment
+
+For local development, you don't need to generate the runtime config. The app automatically falls back to same-origin mode when `runtime-config.js` is not present:
+
+```bash
+# Just run the backend server
+npm run dev
+
+# Frontend will automatically connect to localhost:3000
+```
+
+### Updating Backend URLs
+
+If you need to change the backend URLs after deployment:
+
+1. **For Vercel**: Update environment variables in Vercel dashboard, then redeploy
+2. **For Netlify**: Update environment variables in Netlify site settings, then trigger a new build
+3. **For local testing**: Update `.env` file or export environment variables, then run `npm run build:frontend`
+
+### Troubleshooting Split Deployment
+
+#### CORS Errors
+
+If you see CORS errors in the browser console:
+
+1. Verify `CORS_ORIGINS` on backend includes your frontend domain
+2. Ensure the domain matches exactly (including protocol: `https://`)
+3. Check that the backend server is running and accessible
+4. Verify firewall rules allow traffic on the backend port
+
+#### WebSocket Connection Fails
+
+If Socket.IO fails to connect:
+
+1. Verify `SOCKET_ALLOWED_ORIGINS` on backend includes your frontend domain
+2. Check that WebSocket traffic is not blocked by firewall
+3. Ensure the backend URL uses `https://` (not `http://`) in production
+4. Some hosting platforms require special WebSocket configuration
+
+#### API Requests Fail
+
+If REST API requests fail:
+
+1. Check `PUBLIC_API_URL` is set correctly in frontend environment variables
+2. Verify backend server is running and accessible
+3. Check browser DevTools Network tab for request details
+4. Ensure backend CORS configuration allows the HTTP methods: GET, POST, PUT, DELETE
+
+#### Runtime Config Not Loading
+
+If the frontend doesn't connect to the backend:
+
+1. Verify `npm run build:frontend` was executed during deployment
+2. Check that `public/runtime-config.js` exists
+3. Look for error messages in browser console
+4. Verify environment variables are set in hosting platform
 
 ## Troubleshooting
 

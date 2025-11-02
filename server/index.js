@@ -17,7 +17,7 @@ const createSettingsRouter = require('./routes/settings');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: config.cors,
+  cors: config.socketIO.cors,
   pingTimeout: config.socketIO.pingTimeout,
   pingInterval: config.socketIO.pingInterval
 });

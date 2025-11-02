@@ -1,6 +1,10 @@
 (function() {
     'use strict';
 
+    // Get Socket.IO URL from runtime config, fallback to same-origin
+    const SOCKET_URL = (window.APP_CONFIG && window.APP_CONFIG.socketUrl !== 'window.location.origin') 
+        ? window.APP_CONFIG.socketUrl 
+        : undefined; // undefined means same-origin
     const DEFAULT_NAMESPACE = '/';
     const RECONNECT_ATTEMPTS = 5;
     const RECONNECT_DELAY = 1000;
@@ -128,17 +132,23 @@
         try {
             updateStatus('connecting');
             
-            socket = io(DEFAULT_NAMESPACE, {
+            const socketOptions = {
                 reconnection: true,
                 reconnectionAttempts: RECONNECT_ATTEMPTS,
                 reconnectionDelay: RECONNECT_DELAY,
                 timeout: 10000,
                 transports: ['websocket', 'polling']
-            });
+            };
+
+            // Connect to specific URL or same-origin
+            socket = SOCKET_URL 
+                ? io(SOCKET_URL + DEFAULT_NAMESPACE, socketOptions)
+                : io(DEFAULT_NAMESPACE, socketOptions);
 
             setupEventListeners();
             
             log('INIT', 'Socket.IO client initialized', {
+                url: SOCKET_URL || '(same-origin)',
                 namespace: DEFAULT_NAMESPACE,
                 reconnectionAttempts: RECONNECT_ATTEMPTS,
                 reconnectionDelay: RECONNECT_DELAY

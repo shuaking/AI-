@@ -1,0 +1,39 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "name": "ai-workflow-studio-frontend",
+  "buildCommand": "npm run build:frontend",
+  "outputDirectory": "public",
+  "installCommand": "npm install",
+  "framework": null,
+  "public": true,
+  "env": {
+    "PUBLIC_API_URL": "@public_api_url",
+    "PUBLIC_SOCKET_URL": "@public_socket_url"
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
