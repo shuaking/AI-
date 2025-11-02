@@ -1,8 +1,10 @@
 const express = require('express');
-const router = express.Router();
 const { validateWorkflow } = require('../utils/validators');
+const createBroadcaster = require('../utils/broadcast');
 
-function createWorkflowsRouter(jsonStore) {
+function createWorkflowsRouter(jsonStore, io) {
+  const router = express.Router();
+  const { broadcast } = createBroadcaster(io);
   const FILENAME = 'workflows.json';
 
   router.get('/', async (req, res, next) => {
@@ -74,6 +76,8 @@ function createWorkflowsRouter(jsonStore) {
       workflows[id] = workflow;
       await jsonStore.write(FILENAME, workflows);
 
+      broadcast('workflows', 'create', workflows, { id });
+
       res.status(201).json({
         success: true,
         message: 'Workflow created successfully',
@@ -112,6 +116,8 @@ function createWorkflowsRouter(jsonStore) {
       workflows[id] = workflow;
       await jsonStore.write(FILENAME, workflows);
 
+      broadcast('workflows', 'update', workflows, { id });
+
       res.json({
         success: true,
         message: 'Workflow updated successfully',
@@ -137,6 +143,8 @@ function createWorkflowsRouter(jsonStore) {
 
       delete workflows[id];
       await jsonStore.write(FILENAME, workflows);
+
+      broadcast('workflows', 'delete', workflows, { id });
 
       res.json({
         success: true,

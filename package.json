@@ -5,7 +5,8 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "nodemon server/index.js"
+    "dev": "nodemon server/index.js",
+    "test:socketio": "node server/test-socketio-client.js"
   },
   "keywords": [
     "ai",
@@ -21,7 +22,9 @@
     "socket.io": "^4.6.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "socket.io-client": "^4.6.1",
+    "node-fetch": "^2.6.7"
   },
   "engines": {
     "node": ">=16.0.0"
