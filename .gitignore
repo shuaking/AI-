@@ -35,6 +35,9 @@ dist/
 build/
 coverage/
 
+# Generated runtime configuration
+public/runtime-config.js
+
 # Temporary files
 tmp/
 temp/

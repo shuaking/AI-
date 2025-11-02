@@ -2721,6 +2721,18 @@
     <!-- Emoji选择器 -->
     <div class="emoji-picker" id="emojiPicker"></div>
 
+    <!-- Runtime Configuration (with fallback for development) -->
+    <script>
+        // Inline fallback for development when runtime-config.js is not generated
+        if (typeof window.APP_CONFIG === 'undefined') {
+            window.APP_CONFIG = {
+                apiBaseUrl: window.location.origin,
+                socketUrl: window.location.origin
+            };
+        }
+    </script>
+    <script src="/runtime-config.js" onerror="console.warn('[Runtime Config] File not found, using same-origin defaults')"></script>
+    
     <!-- Socket.IO客户端库 -->
     <script src="/socket.io/socket.io.js"></script>
     

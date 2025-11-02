@@ -1,0 +1,61 @@
+# Netlify configuration for AI Workflow Studio frontend
+
+[build]
+  # Build command to generate runtime configuration
+  command = "npm run build:frontend"
+  
+  # Directory to publish (static files)
+  publish = "public"
+  
+  # Node version (optional, but recommended)
+  # environment = { NODE_VERSION = "16" }
+
+[build.environment]
+  # These environment variables should be set in Netlify UI
+  # PUBLIC_API_URL = "https://your-api-server.com"
+  # PUBLIC_SOCKET_URL = "https://your-api-server.com"
+
+# SPA routing - redirect all requests to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+# Headers for all pages
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Security headers
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    
+    # Allow WebSocket connections for Socket.IO
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+
+# Cache control for static assets
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache control for runtime-config.js (short cache)
+[[headers]]
+  for = "/runtime-config.js"
+  [headers.values]
+    Cache-Control = "public, max-age=300, must-revalidate"
+
+# HTML should not be cached
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
