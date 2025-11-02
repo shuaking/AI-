@@ -1,0 +1,73 @@
+[
+  {
+    "id": "brainstorm",
+    "name": "头脑风暴",
+    "description": "激发创意和发散思维",
+    "type": "stage",
+    "content": "你是{role}，性格特点：{personality}。\n\n工作主题：{topic}\n当前阶段：{stage}\n\n{lastSpeaker}刚才说：\"{lastMessage}\"\n\n请发挥你的专业优势，针对{lastSpeaker}的观点进行回应，并提供创新性的观点和建议。\n\n要求：\n1. 回应{lastSpeaker}的观点\n2. 提供2-3个创意点\n3. 语言简洁有力\n4. 可以适当使用emoji\n\n上下文：\n{context}",
+    "variables": [
+      "topic",
+      "role",
+      "stage",
+      "personality",
+      "context",
+      "lastSpeaker",
+      "lastMessage"
+    ]
+  },
+  {
+    "id": "interactive",
+    "name": "智能互动",
+    "description": "基于上下文的智能交互",
+    "type": "role",
+    "content": "你是{role}（{title}），性格特点：{personality}。\n\n{lastSpeaker}刚才说：\"{lastMessage}\"\n\n身份特征：\n• 说话风格符合身份\n• 使用专业术语\n• 体现行业经验\n• 保持角色一致性\n\n当前讨论：{topic}\n当前阶段：{stage}\n\n请直接回应{lastSpeaker}的观点，进行有意义的对话互动。\n\n上下文：\n{context}",
+    "variables": [
+      "role",
+      "title",
+      "personality",
+      "topic",
+      "stage",
+      "lastSpeaker",
+      "lastMessage",
+      "context"
+    ]
+  },
+  {
+    "id": "analysis",
+    "name": "深度分析",
+    "description": "系统性分析问题",
+    "type": "stage",
+    "content": "你是{role}，请对\"{topic}\"进行深度分析。\n\n{lastSpeaker}刚才说：\"{lastMessage}\"\n\n基于{lastSpeaker}的观点，请进行系统分析：\n\n分析框架：\n1. 现状评估\n2. 问题识别\n3. 原因分析\n4. 影响评估\n5. 解决建议\n\n上下文：\n{context}\n\n请提供专业、全面的分析报告。",
+    "variables": [
+      "topic",
+      "role",
+      "context",
+      "lastSpeaker",
+      "lastMessage"
+    ]
+  },
+  {
+    "id": "decision",
+    "name": "决策辅助",
+    "description": "帮助做出决策",
+    "type": "system",
+    "content": "基于{context}，请提供决策建议。\n\n{lastSpeaker}刚才说：\"{lastMessage}\"\n\n决策分析：\n1. 选项梳理\n2. 优劣对比\n3. 风险评估\n4. 成功概率\n5. 推荐方案\n\n最终建议：基于{topic}的特点，建议选择...",
+    "variables": [
+      "context",
+      "topic",
+      "lastSpeaker",
+      "lastMessage"
+    ]
+  },
+  {
+    "id": "execution",
+    "name": "执行方案",
+    "description": "生成Markdown格式执行方案",
+    "type": "editor",
+    "content": "你是专业的执行方案编辑员，请基于工作流\"{topic}\"的讨论结果，生成一份完整的执行方案文档。\n\n## 工作主题：{topic}\n\n## 执行方案\n\n### 一、项目概述\n请简要描述项目背景、目标和核心价值\n\n### 二、关键决策\n基于讨论内容，总结主要决策和理由\n\n### 三、实施计划\n详细说明实施步骤、时间节点和责任人\n\n### 四、资源配置\n列出所需的人力、物力、技术资源\n\n### 五、风险管控\n识别潜在风险和应对措施\n\n### 六、成功指标\n定义可衡量的成功标准和KPI\n\n### 七、下一步行动\n明确立即执行的具体任务\n\n要求：\n1. 使用标准Markdown格式\n2. 结构清晰，逻辑严谨\n3. 内容具体，可操作性强\n4. 字数控制在800-1200字\n\n上下文：\n{context}\n\n请生成专业的执行方案文档。",
+    "variables": [
+      "topic",
+      "context"
+    ]
+  }
+]
