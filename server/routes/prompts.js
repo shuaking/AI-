@@ -1,8 +1,10 @@
 const express = require('express');
-const router = express.Router();
 const { validatePrompt } = require('../utils/validators');
+const createBroadcaster = require('../utils/broadcast');
 
-function createPromptsRouter(jsonStore) {
+function createPromptsRouter(jsonStore, io) {
+  const router = express.Router();
+  const { broadcast } = createBroadcaster(io);
   const FILENAME = 'prompts.json';
 
   router.get('/', async (req, res, next) => {
@@ -66,6 +68,8 @@ function createPromptsRouter(jsonStore) {
       prompts.push(prompt);
       await jsonStore.write(FILENAME, prompts);
 
+      broadcast('prompts', 'create', prompts, { id: prompt.id });
+
       res.status(201).json({
         success: true,
         message: 'Prompt created successfully',
@@ -115,6 +119,8 @@ function createPromptsRouter(jsonStore) {
       prompts[index] = prompt;
       await jsonStore.write(FILENAME, prompts);
 
+      broadcast('prompts', 'update', prompts, { id });
+
       res.json({
         success: true,
         message: 'Prompt updated successfully',
@@ -141,6 +147,8 @@ function createPromptsRouter(jsonStore) {
 
       prompts.splice(index, 1);
       await jsonStore.write(FILENAME, prompts);
+
+      broadcast('prompts', 'delete', prompts, { id });
 
       res.json({
         success: true,

@@ -1,8 +1,10 @@
 const express = require('express');
-const router = express.Router();
 const { validateSettings } = require('../utils/validators');
+const createBroadcaster = require('../utils/broadcast');
 
-function createSettingsRouter(jsonStore) {
+function createSettingsRouter(jsonStore, io) {
+  const router = express.Router();
+  const { broadcast } = createBroadcaster(io);
   const FILENAME = 'settings.json';
 
   router.get('/', async (req, res, next) => {
@@ -55,6 +57,8 @@ function createSettingsRouter(jsonStore) {
       }
 
       await jsonStore.write(FILENAME, settings);
+
+      broadcast('settings', 'update', settings, { type: 'variables' });
 
       res.json({
         success: true,
@@ -109,6 +113,8 @@ function createSettingsRouter(jsonStore) {
       settings.globalVariables[key] = value;
       await jsonStore.write(FILENAME, settings);
 
+      broadcast('settings', 'update', settings, { type: 'variable', key });
+
       res.json({
         success: true,
         message: 'Variable updated successfully',
@@ -134,6 +140,8 @@ function createSettingsRouter(jsonStore) {
 
       delete settings.globalVariables[key];
       await jsonStore.write(FILENAME, settings);
+
+      broadcast('settings', 'delete', settings, { type: 'variable', key });
 
       res.json({
         success: true,
@@ -182,6 +190,8 @@ function createSettingsRouter(jsonStore) {
       }
 
       await jsonStore.write(FILENAME, settings);
+
+      broadcast('settings', 'update', settings, { type: 'api-configs' });
 
       res.json({
         success: true,
@@ -247,6 +257,8 @@ function createSettingsRouter(jsonStore) {
 
       await jsonStore.write(FILENAME, settings);
 
+      broadcast('settings', 'update', settings, { type: 'api-config', name });
+
       res.json({
         success: true,
         message: 'API config updated successfully',
@@ -272,6 +284,8 @@ function createSettingsRouter(jsonStore) {
 
       delete settings.customApiConfigs[name];
       await jsonStore.write(FILENAME, settings);
+
+      broadcast('settings', 'delete', settings, { type: 'api-config', name });
 
       res.json({
         success: true,

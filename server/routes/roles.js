@@ -1,8 +1,10 @@
 const express = require('express');
-const router = express.Router();
 const { validateRole } = require('../utils/validators');
+const createBroadcaster = require('../utils/broadcast');
 
-function createRolesRouter(jsonStore) {
+function createRolesRouter(jsonStore, io) {
+  const router = express.Router();
+  const { broadcast } = createBroadcaster(io);
   const FILENAME = 'roles.json';
 
   router.get('/', async (req, res, next) => {
@@ -66,6 +68,8 @@ function createRolesRouter(jsonStore) {
       roles.push(role);
       await jsonStore.write(FILENAME, roles);
 
+      broadcast('roles', 'create', roles, { id: role.id });
+
       res.status(201).json({
         success: true,
         message: 'Role created successfully',
@@ -115,6 +119,8 @@ function createRolesRouter(jsonStore) {
       roles[index] = role;
       await jsonStore.write(FILENAME, roles);
 
+      broadcast('roles', 'update', roles, { id });
+
       res.json({
         success: true,
         message: 'Role updated successfully',
@@ -150,6 +156,8 @@ function createRolesRouter(jsonStore) {
 
       roles.splice(index, 1);
       await jsonStore.write(FILENAME, roles);
+
+      broadcast('roles', 'delete', roles, { id });
 
       res.json({
         success: true,

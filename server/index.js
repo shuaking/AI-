@@ -55,10 +55,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.use('/api/workflows', createWorkflowsRouter(jsonStore));
-app.use('/api/roles', createRolesRouter(jsonStore));
-app.use('/api/prompts', createPromptsRouter(jsonStore));
-app.use('/api/settings', createSettingsRouter(jsonStore));
+app.use('/api/workflows', createWorkflowsRouter(jsonStore, io));
+app.use('/api/roles', createRolesRouter(jsonStore, io));
+app.use('/api/prompts', createPromptsRouter(jsonStore, io));
+app.use('/api/settings', createSettingsRouter(jsonStore, io));
 
 app.use(errorHandler);
 
@@ -67,6 +67,22 @@ io.on('connection', (socket) => {
   const clientAddress = socket.handshake.address;
   
   console.log(`[Socket.IO] Client connected: ${clientId} from ${clientAddress}`);
+  
+  socket.on('join', (room) => {
+    if (typeof room === 'string' && room) {
+      socket.join(room);
+      console.log(`[Socket.IO] Client ${clientId} joined room: ${room}`);
+      socket.emit('joined', { room, timestamp: new Date().toISOString() });
+    }
+  });
+  
+  socket.on('leave', (room) => {
+    if (typeof room === 'string' && room) {
+      socket.leave(room);
+      console.log(`[Socket.IO] Client ${clientId} left room: ${room}`);
+      socket.emit('left', { room, timestamp: new Date().toISOString() });
+    }
+  });
   
   socket.on('disconnect', (reason) => {
     console.log(`[Socket.IO] Client disconnected: ${clientId}, reason: ${reason}`);

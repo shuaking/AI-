@@ -106,6 +106,118 @@ Response:
 | PUT | `/api/settings/api-configs/:name` | Set/update API config |
 | DELETE | `/api/settings/api-configs/:name` | Delete API config |
 
+## Socket.IO Real-time Events
+
+The server broadcasts resource change events via Socket.IO to enable real-time synchronization across clients.
+
+### Connection
+
+Connect to the Socket.IO server at the same host and port as the API:
+
+```javascript
+const socket = io('http://localhost:3000');
+```
+
+### Event Names
+
+All mutation events follow the pattern: `<resource>:updated`
+
+- `workflows:updated`
+- `roles:updated`
+- `prompts:updated`
+- `settings:updated`
+
+### Event Payload Schema
+
+```json
+{
+  "resource": "workflows",
+  "action": "create|update|delete",
+  "payload": { ... },
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "id": "resource-id"
+}
+```
+
+**Fields:**
+- `resource`: The resource type (workflows, roles, prompts, settings)
+- `action`: The mutation operation (create, update, delete)
+- `payload`: The complete resource data after the mutation
+- `timestamp`: ISO 8601 timestamp when the event was emitted
+- `id`: (optional) The specific resource ID that was affected
+- Additional metadata fields depending on the resource
+
+### Subscribing to Events
+
+```javascript
+socket.on('workflows:updated', (event) => {
+  console.log('Workflow changed:', event.action, event.id);
+  console.log('Updated data:', event.payload);
+});
+
+socket.on('roles:updated', (event) => {
+  console.log('Role changed:', event.action, event.id);
+});
+
+socket.on('prompts:updated', (event) => {
+  console.log('Prompt changed:', event.action, event.id);
+});
+
+socket.on('settings:updated', (event) => {
+  console.log('Settings changed:', event.action);
+  if (event.type) {
+    console.log('Settings subsection:', event.type);
+  }
+});
+```
+
+### Room Support (Optional)
+
+Clients can join resource-specific rooms for future targeted broadcasting:
+
+```javascript
+socket.emit('join', 'workflows');
+socket.on('joined', (data) => {
+  console.log('Joined room:', data.room, 'at', data.timestamp);
+});
+
+socket.emit('leave', 'workflows');
+socket.on('left', (data) => {
+  console.log('Left room:', data.room, 'at', data.timestamp);
+});
+```
+
+Currently, all events are broadcasted globally. Room-based filtering may be added in future updates.
+
+### Example: Full Sync Flow
+
+```javascript
+const socket = io('http://localhost:3000');
+
+socket.on('connect', () => {
+  console.log('Connected to server');
+});
+
+socket.on('workflows:updated', (event) => {
+  if (event.action === 'create') {
+    addWorkflowToUI(event.payload[event.id]);
+  } else if (event.action === 'update') {
+    updateWorkflowInUI(event.id, event.payload[event.id]);
+  } else if (event.action === 'delete') {
+    removeWorkflowFromUI(event.id);
+  }
+});
+
+async function createWorkflow(data) {
+  const response = await fetch('/api/workflows', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  return response.json();
+}
+```
+
 ## Response Format
 
 ### Success Response
@@ -176,7 +288,7 @@ All incoming data is validated before being persisted:
 
 See `TEST_API.md` for comprehensive manual testing instructions.
 
-Quick test:
+### Quick API Test
 ```bash
 # Start server
 npm start
@@ -187,6 +299,28 @@ curl http://localhost:3000/api/health
 # List workflows
 curl http://localhost:3000/api/workflows
 ```
+
+### Integration Tests
+```bash
+# Run full REST API integration tests
+bash server/test-integration.sh
+```
+
+### Socket.IO Event Broadcasting Test
+```bash
+# Start server in one terminal
+npm start
+
+# In another terminal, run the Socket.IO test client
+npm run test:socketio
+```
+
+This will automatically:
+- Connect to the Socket.IO server
+- Test room join/leave functionality
+- Perform CRUD operations on all resources (workflows, roles, prompts, settings)
+- Verify that all mutation events are received
+- Display detailed event logs and summary
 
 ## Configuration
 
