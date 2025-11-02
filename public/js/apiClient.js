@@ -149,24 +149,122 @@
     }
 
     /**
-     * Save workflows to API
+     * Save workflows to API (bulk update - for backward compatibility)
      */
     async function saveWorkflows(workflows) {
         saveToCache(CACHE_KEYS.WORKFLOWS, workflows);
+        console.warn('[ApiClient] Bulk workflow save - use createWorkflow/updateWorkflow instead');
+        return { success: true, cached: true };
+    }
+
+    /**
+     * Create a new workflow
+     */
+    async function createWorkflow(workflow) {
+        saveToCache(CACHE_KEYS.WORKFLOWS, { ...getFromCache(CACHE_KEYS.WORKFLOWS), [workflow.id]: workflow });
 
         if (!isOnline()) {
-            console.warn('[ApiClient] Offline: workflows saved to cache only');
-            return { success: true, offline: true };
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'workflows',
+                    action: 'create',
+                    payload: workflow
+                });
+            }
+            return { success: true, offline: true, queued: true };
         }
 
         try {
-            // Note: This requires PUT endpoints for bulk updates
-            // For now, just cache locally
-            console.warn('[ApiClient] Bulk workflow save not yet implemented on backend');
-            return { success: true, cached: true };
+            const response = await requestWithRetry(`${API_BASE_URL}${API_PREFIX}/workflows`, {
+                method: 'POST',
+                body: JSON.stringify(workflow)
+            });
+            return { success: true, data: response.data };
         } catch (error) {
-            console.error('[ApiClient] Failed to save workflows:', error);
-            return { success: false, error: error.message };
+            console.error('[ApiClient] Failed to create workflow:', error);
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'workflows',
+                    action: 'create',
+                    payload: workflow
+                });
+            }
+            return { success: false, error: error.message, queued: true };
+        }
+    }
+
+    /**
+     * Update an existing workflow
+     */
+    async function updateWorkflow(id, workflow) {
+        const workflows = getFromCache(CACHE_KEYS.WORKFLOWS) || {};
+        workflows[id] = workflow;
+        saveToCache(CACHE_KEYS.WORKFLOWS, workflows);
+
+        if (!isOnline()) {
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'workflows',
+                    action: 'update',
+                    payload: { ...workflow, id }
+                });
+            }
+            return { success: true, offline: true, queued: true };
+        }
+
+        try {
+            const response = await requestWithRetry(`${API_BASE_URL}${API_PREFIX}/workflows/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(workflow)
+            });
+            return { success: true, data: response.data };
+        } catch (error) {
+            console.error('[ApiClient] Failed to update workflow:', error);
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'workflows',
+                    action: 'update',
+                    payload: { ...workflow, id }
+                });
+            }
+            return { success: false, error: error.message, queued: true };
+        }
+    }
+
+    /**
+     * Delete a workflow
+     */
+    async function deleteWorkflow(id) {
+        const workflows = getFromCache(CACHE_KEYS.WORKFLOWS) || {};
+        delete workflows[id];
+        saveToCache(CACHE_KEYS.WORKFLOWS, workflows);
+
+        if (!isOnline()) {
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'workflows',
+                    action: 'delete',
+                    payload: id
+                });
+            }
+            return { success: true, offline: true, queued: true };
+        }
+
+        try {
+            await requestWithRetry(`${API_BASE_URL}${API_PREFIX}/workflows/${id}`, {
+                method: 'DELETE'
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[ApiClient] Failed to delete workflow:', error);
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'workflows',
+                    action: 'delete',
+                    payload: id
+                });
+            }
+            return { success: false, error: error.message, queued: true };
         }
     }
 
@@ -202,22 +300,127 @@
     }
 
     /**
-     * Save roles to API
+     * Save roles to API (bulk update - for backward compatibility)
      */
     async function saveRoles(roles) {
         saveToCache(CACHE_KEYS.ROLES, roles);
+        console.warn('[ApiClient] Bulk role save - use createRole/updateRole instead');
+        return { success: true, cached: true };
+    }
+
+    /**
+     * Create a new role
+     */
+    async function createRole(role) {
+        const roles = getFromCache(CACHE_KEYS.ROLES) || [];
+        roles.push(role);
+        saveToCache(CACHE_KEYS.ROLES, roles);
 
         if (!isOnline()) {
-            console.warn('[ApiClient] Offline: roles saved to cache only');
-            return { success: true, offline: true };
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'roles',
+                    action: 'create',
+                    payload: role
+                });
+            }
+            return { success: true, offline: true, queued: true };
         }
 
         try {
-            console.warn('[ApiClient] Bulk role save not yet implemented on backend');
-            return { success: true, cached: true };
+            const response = await requestWithRetry(`${API_BASE_URL}${API_PREFIX}/roles`, {
+                method: 'POST',
+                body: JSON.stringify(role)
+            });
+            return { success: true, data: response.data };
         } catch (error) {
-            console.error('[ApiClient] Failed to save roles:', error);
-            return { success: false, error: error.message };
+            console.error('[ApiClient] Failed to create role:', error);
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'roles',
+                    action: 'create',
+                    payload: role
+                });
+            }
+            return { success: false, error: error.message, queued: true };
+        }
+    }
+
+    /**
+     * Update an existing role
+     */
+    async function updateRole(id, role) {
+        const roles = getFromCache(CACHE_KEYS.ROLES) || [];
+        const index = roles.findIndex(r => r.id === id);
+        if (index !== -1) {
+            roles[index] = { ...role, id };
+            saveToCache(CACHE_KEYS.ROLES, roles);
+        }
+
+        if (!isOnline()) {
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'roles',
+                    action: 'update',
+                    payload: { ...role, id }
+                });
+            }
+            return { success: true, offline: true, queued: true };
+        }
+
+        try {
+            const response = await requestWithRetry(`${API_BASE_URL}${API_PREFIX}/roles/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(role)
+            });
+            return { success: true, data: response.data };
+        } catch (error) {
+            console.error('[ApiClient] Failed to update role:', error);
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'roles',
+                    action: 'update',
+                    payload: { ...role, id }
+                });
+            }
+            return { success: false, error: error.message, queued: true };
+        }
+    }
+
+    /**
+     * Delete a role
+     */
+    async function deleteRole(id) {
+        const roles = getFromCache(CACHE_KEYS.ROLES) || [];
+        const filtered = roles.filter(r => r.id !== id);
+        saveToCache(CACHE_KEYS.ROLES, filtered);
+
+        if (!isOnline()) {
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'roles',
+                    action: 'delete',
+                    payload: id
+                });
+            }
+            return { success: true, offline: true, queued: true };
+        }
+
+        try {
+            await requestWithRetry(`${API_BASE_URL}${API_PREFIX}/roles/${id}`, {
+                method: 'DELETE'
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[ApiClient] Failed to delete role:', error);
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'roles',
+                    action: 'delete',
+                    payload: id
+                });
+            }
+            return { success: false, error: error.message, queued: true };
         }
     }
 
@@ -253,22 +456,127 @@
     }
 
     /**
-     * Save prompts to API
+     * Save prompts to API (bulk update - for backward compatibility)
      */
     async function savePrompts(prompts) {
         saveToCache(CACHE_KEYS.PROMPTS, prompts);
+        console.warn('[ApiClient] Bulk prompt save - use createPrompt/updatePrompt instead');
+        return { success: true, cached: true };
+    }
+
+    /**
+     * Create a new prompt
+     */
+    async function createPrompt(prompt) {
+        const prompts = getFromCache(CACHE_KEYS.PROMPTS) || [];
+        prompts.push(prompt);
+        saveToCache(CACHE_KEYS.PROMPTS, prompts);
 
         if (!isOnline()) {
-            console.warn('[ApiClient] Offline: prompts saved to cache only');
-            return { success: true, offline: true };
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'prompts',
+                    action: 'create',
+                    payload: prompt
+                });
+            }
+            return { success: true, offline: true, queued: true };
         }
 
         try {
-            console.warn('[ApiClient] Bulk prompt save not yet implemented on backend');
-            return { success: true, cached: true };
+            const response = await requestWithRetry(`${API_BASE_URL}${API_PREFIX}/prompts`, {
+                method: 'POST',
+                body: JSON.stringify(prompt)
+            });
+            return { success: true, data: response.data };
         } catch (error) {
-            console.error('[ApiClient] Failed to save prompts:', error);
-            return { success: false, error: error.message };
+            console.error('[ApiClient] Failed to create prompt:', error);
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'prompts',
+                    action: 'create',
+                    payload: prompt
+                });
+            }
+            return { success: false, error: error.message, queued: true };
+        }
+    }
+
+    /**
+     * Update an existing prompt
+     */
+    async function updatePrompt(id, prompt) {
+        const prompts = getFromCache(CACHE_KEYS.PROMPTS) || [];
+        const index = prompts.findIndex(p => p.id === id);
+        if (index !== -1) {
+            prompts[index] = { ...prompt, id };
+            saveToCache(CACHE_KEYS.PROMPTS, prompts);
+        }
+
+        if (!isOnline()) {
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'prompts',
+                    action: 'update',
+                    payload: { ...prompt, id }
+                });
+            }
+            return { success: true, offline: true, queued: true };
+        }
+
+        try {
+            const response = await requestWithRetry(`${API_BASE_URL}${API_PREFIX}/prompts/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(prompt)
+            });
+            return { success: true, data: response.data };
+        } catch (error) {
+            console.error('[ApiClient] Failed to update prompt:', error);
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'prompts',
+                    action: 'update',
+                    payload: { ...prompt, id }
+                });
+            }
+            return { success: false, error: error.message, queued: true };
+        }
+    }
+
+    /**
+     * Delete a prompt
+     */
+    async function deletePrompt(id) {
+        const prompts = getFromCache(CACHE_KEYS.PROMPTS) || [];
+        const filtered = prompts.filter(p => p.id !== id);
+        saveToCache(CACHE_KEYS.PROMPTS, filtered);
+
+        if (!isOnline()) {
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'prompts',
+                    action: 'delete',
+                    payload: id
+                });
+            }
+            return { success: true, offline: true, queued: true };
+        }
+
+        try {
+            await requestWithRetry(`${API_BASE_URL}${API_PREFIX}/prompts/${id}`, {
+                method: 'DELETE'
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[ApiClient] Failed to delete prompt:', error);
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'prompts',
+                    action: 'delete',
+                    payload: id
+                });
+            }
+            return { success: false, error: error.message, queued: true };
         }
     }
 
@@ -311,7 +619,14 @@
 
         if (!isOnline()) {
             console.warn('[ApiClient] Offline: settings saved to cache only');
-            return { success: true, offline: true };
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'settings',
+                    action: 'update',
+                    payload: settings
+                });
+            }
+            return { success: true, offline: true, queued: true };
         }
 
         try {
@@ -334,7 +649,14 @@
             return { success: true };
         } catch (error) {
             console.error('[ApiClient] Failed to save settings:', error);
-            return { success: false, error: error.message };
+            if (window.syncQueue) {
+                window.syncQueue.enqueue({
+                    resource: 'settings',
+                    action: 'update',
+                    payload: settings
+                });
+            }
+            return { success: false, error: error.message, queued: true };
         }
     }
 
@@ -342,10 +664,19 @@
     const apiClient = {
         getWorkflows,
         saveWorkflows,
+        createWorkflow,
+        updateWorkflow,
+        deleteWorkflow,
         getRoles,
         saveRoles,
+        createRole,
+        updateRole,
+        deleteRole,
         getPrompts,
         savePrompts,
+        createPrompt,
+        updatePrompt,
+        deletePrompt,
         getSettings,
         saveSettings,
         isOnline,

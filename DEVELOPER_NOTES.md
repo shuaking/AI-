@@ -142,13 +142,76 @@ curl http://localhost:3000/
 ### Socket.IO Testing
 Use the browser console or a Socket.IO client library to test real-time communication.
 
+## Sync Queue and Offline Support
+
+The application implements a comprehensive sync system that enables offline operation and conflict resolution:
+
+### Queue Format
+
+Operations are stored in `localStorage` under the key `syncQueue` with the following structure:
+```javascript
+{
+  id: 'op_<timestamp>_<random>',      // Unique operation ID
+  resource: 'workflows|roles|prompts|settings',  // Resource type
+  action: 'create|update|delete',     // Operation type
+  payload: {...},                     // Operation data (resource object or ID for delete)
+  timestamp: '2025-11-02T...',        // ISO timestamp
+  retries: 0,                         // Retry count
+  lastRetry: '2025-11-02T...'        // Last retry timestamp (optional)
+}
+```
+
+### Queue Management
+
+- **Max Queue Size**: 100 operations (oldest are removed when limit exceeded)
+- **Max Retries**: 3 attempts per operation
+- **Queue Persistence**: Survives page reloads via localStorage
+- **Auto-flush**: Triggered when network connectivity is restored
+
+### Conflict Resolution Policy
+
+When socket events are received indicating remote changes:
+
+1. **Check for conflicts**: Compare incoming data with queued operations by resource type and ID
+2. **Timestamp comparison**: 
+   - If queued operation timestamp > remote timestamp: Keep local change in queue, show warning notification
+   - If remote timestamp > queued operation timestamp: Apply remote change, remove conflicting operation from queue
+3. **User notification**: Show sync status indicator and notifications for conflicts
+
+### Sync Status States
+
+- `synced`: All changes saved to server, queue is empty
+- `syncing`: Active API call or queue flush in progress
+- `offline`: Network unavailable, operations are queued (shows pending count)
+- `conflict`: Timestamp conflict detected, user should review changes
+
+### Implementation Files
+
+- `public/js/syncQueue.js` - Queue persistence and management
+- `public/js/syncManager.js` - Queue flushing, conflict resolution, socket event handling
+- `public/js/apiClient.js` - API methods with automatic queue integration
+
+### Testing Offline Scenarios
+
+```bash
+# 1. Start server
+npm start
+
+# 2. In browser DevTools, simulate offline mode:
+#    - Open DevTools > Network tab > Toggle "Offline"
+#    - Make changes (add/edit/delete roles, prompts, etc.)
+#    - Verify queue indicator shows pending operations
+#    - Toggle back to "Online"
+#    - Verify queue flushes automatically
+```
+
 ## Next Steps
 
 Future enhancements could include:
 - Authentication/authorization middleware
-- API routes for workflow management
 - Database integration for persistence
 - Redis adapter for Socket.IO horizontal scaling
 - Rate limiting and security headers
 - Logging middleware (Morgan, Winston, etc.)
 - API documentation (Swagger/OpenAPI)
+- Enhanced conflict resolution UI with manual merge capability

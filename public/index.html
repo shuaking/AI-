@@ -2264,6 +2264,47 @@
             }
         }
 
+        /* 同步状态指示器 */
+        .sync-status-indicator {
+            position: fixed;
+            top: 10px;
+            right: 130px;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            z-index: 100;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            cursor: help;
+        }
+
+        .sync-status-indicator.synced {
+            background: rgba(0, 255, 136, 0.15);
+            border: 1px solid rgba(0, 255, 136, 0.4);
+            color: #00ff88;
+        }
+
+        .sync-status-indicator.syncing {
+            background: rgba(33, 150, 243, 0.15);
+            border: 1px solid rgba(33, 150, 243, 0.4);
+            color: #2196f3;
+            animation: pulse 1.5s infinite;
+        }
+
+        .sync-status-indicator.offline {
+            background: rgba(255, 193, 7, 0.15);
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            color: #ffc107;
+        }
+
+        .sync-status-indicator.conflict {
+            background: rgba(255, 87, 34, 0.15);
+            border: 1px solid rgba(255, 87, 34, 0.4);
+            color: #ff5722;
+            animation: pulse 1s infinite;
+        }
+
         @media (max-width: 768px) {
             .socket-status-indicator {
                 top: 5px;
@@ -2280,6 +2321,11 @@
 
     <!-- Socket连接状态指示器 -->
     <div id="socketStatusIndicator" class="socket-status-indicator disconnected">● Offline</div>
+
+    <!-- 同步状态指示器 -->
+    <div id="syncStatusIndicator" class="sync-status-indicator synced" title="数据同步状态">
+        <span id="syncStatusText">✓ 已同步</span>
+    </div>
 
     <div class="app-container">
         <!-- ========== 左侧控制面板 ========== -->
@@ -2683,6 +2729,12 @@
     
     <!-- Socket客户端模块 -->
     <script src="/js/socketClient.js"></script>
+    
+    <!-- 同步队列模块 -->
+    <script src="/js/syncQueue.js"></script>
+    
+    <!-- 同步管理器模块 -->
+    <script src="/js/syncManager.js"></script>
 
     <script>
         // 🔒【安全警告】前端演示代码，API密钥会暴露！生产环境必须使用后端代理！
@@ -2995,6 +3047,11 @@
 
         // ========== 初始化 ==========
         document.addEventListener('DOMContentLoaded', async () => {
+            // Register sync manager callbacks early
+            if (window.syncManager) {
+                window.syncManager.onSyncStatusChange(updateSyncStatus);
+            }
+
             // Initialize data from API first
             await initializeData();
             
@@ -3591,20 +3648,28 @@
             showNotification('Prompt已复制', 'success');
         }
 
-        function deletePrompt(promptId) {
+        async function deletePrompt(promptId) {
             if (!confirm('确定要删除这个Prompt吗？')) return;
             
             const index = state.customPrompts.findIndex(p => p.id === promptId);
             if (index > -1) {
                 state.customPrompts.splice(index, 1);
-                saveCustomPrompts();
                 renderMyPrompts();
                 
-                showNotification('Prompt已删除', 'success');
+                if (window.apiClient) {
+                    const result = await window.apiClient.deletePrompt(promptId);
+                    if (result.queued) {
+                        showNotification('Prompt已删除（离线，将自动同步）', 'info');
+                    } else if (result.success) {
+                        showNotification('Prompt已删除', 'success');
+                    } else {
+                        showNotification('Prompt已从本地删除', 'warning');
+                    }
+                }
             }
         }
 
-        function savePrompt() {
+        async function savePrompt() {
             const name = document.getElementById('promptNameInput').value.trim();
             const type = document.getElementById('promptTypeSelect').value;
             const content = document.getElementById('promptEditor').value.trim();
@@ -3624,6 +3689,17 @@
                     prompt.type = type;
                     prompt.content = content;
                     prompt.updatedAt = new Date().toISOString();
+                    
+                    if (window.apiClient) {
+                        const result = await window.apiClient.updatePrompt(editId, prompt);
+                        if (result.queued) {
+                            showNotification('Prompt已更新（离线，将自动同步）', 'info');
+                        } else if (result.success) {
+                            showNotification('Prompt已保存', 'success');
+                        } else {
+                            showNotification('Prompt已保存到本地', 'warning');
+                        }
+                    }
                 }
                 delete editor.dataset.editId;
             } else {
@@ -3635,12 +3711,20 @@
                     createdAt: new Date().toISOString()
                 };
                 state.customPrompts.push(newPrompt);
+                
+                if (window.apiClient) {
+                    const result = await window.apiClient.createPrompt(newPrompt);
+                    if (result.queued) {
+                        showNotification('Prompt已添加（离线，将自动同步）', 'info');
+                    } else if (result.success) {
+                        showNotification('Prompt已保存', 'success');
+                    } else {
+                        showNotification('Prompt已保存到本地', 'warning');
+                    }
+                }
             }
             
-            saveCustomPrompts();
             renderMyPrompts();
-            
-            showNotification('Prompt已保存', 'success');
         }
 
         function previewPrompt() {
@@ -3788,9 +3872,7 @@
         }
 
         function saveGlobalVariables() {
-            localStorage.setItem('globalVariables', JSON.stringify(state.globalVariables));
-            
-            // Save to backend API (async, fire and forget)
+            // Save to backend API (handles localStorage caching internally)
             if (window.apiClient) {
                 window.apiClient.saveSettings({
                     globalVariables: state.globalVariables,
@@ -3888,11 +3970,15 @@
             });
         }
 
-        function updateRoleData(roleId, field, value) {
+        async function updateRoleData(roleId, field, value) {
             const role = [...presetRoles, ...state.customRoles].find(r => r.id === roleId);
             if (role && field && value) {
                 role[field] = value;
-                saveCustomRoles();
+                
+                const isCustomRole = state.customRoles.find(r => r.id === roleId);
+                if (isCustomRole && window.apiClient) {
+                    await window.apiClient.updateRole(roleId, role);
+                }
             }
         }
 
@@ -4049,7 +4135,7 @@
             `).join('');
         }
 
-        function addNewRole() {
+        async function addNewRole() {
             const newRole = {
                 id: 'custom_' + Date.now(),
                 name: '新角色',
@@ -4060,20 +4146,29 @@
             };
             
             state.customRoles.push(newRole);
-            saveCustomRoles();
+            
             renderRoleBuilder();
             renderRoleChips();
             
-            showNotification('新角色已添加', 'success');
+            if (window.apiClient) {
+                const result = await window.apiClient.createRole(newRole);
+                if (result.queued) {
+                    showNotification('新角色已添加（离线，将自动同步）', 'info');
+                } else if (result.success) {
+                    showNotification('新角色已添加', 'success');
+                } else {
+                    showNotification('新角色已保存到本地', 'warning');
+                }
+            }
         }
 
-        function deleteRole(roleId) {
+        async function deleteRole(roleId) {
             if (!confirm('确定要删除这个角色吗？')) return;
             
             const index = state.customRoles.findIndex(r => r.id === roleId);
             if (index > -1) {
                 state.customRoles.splice(index, 1);
-                saveCustomRoles();
+                
                 renderRoleBuilder();
                 renderRoleChips();
                 
@@ -4083,7 +4178,17 @@
                 }
                 
                 updateRoleStatus();
-                showNotification('角色已删除', 'success');
+                
+                if (window.apiClient) {
+                    const result = await window.apiClient.deleteRole(roleId);
+                    if (result.queued) {
+                        showNotification('角色已删除（离线，将自动同步）', 'info');
+                    } else if (result.success) {
+                        showNotification('角色已删除', 'success');
+                    } else {
+                        showNotification('角色已从本地删除', 'warning');
+                    }
+                }
             }
         }
 
@@ -6062,6 +6167,42 @@ ${state.messages.slice(-5).map(m =>
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
+        // ========== 同步状态管理 ==========
+        function updateSyncStatus(status, details = {}) {
+            const indicator = document.getElementById('syncStatusIndicator');
+            const text = document.getElementById('syncStatusText');
+            
+            if (!indicator || !text) return;
+
+            indicator.className = 'sync-status-indicator ' + status;
+
+            switch (status) {
+                case 'synced':
+                    text.textContent = '✓ 已同步';
+                    indicator.title = '所有更改已同步到服务器';
+                    break;
+                case 'syncing':
+                    const queueSize = details.queueSize || 0;
+                    text.textContent = `⟳ 同步中 (${queueSize})`;
+                    indicator.title = `正在同步 ${queueSize} 个更改...`;
+                    break;
+                case 'offline':
+                    const pending = details.queueSize || 0;
+                    text.textContent = pending > 0 ? `⚠ 离线 (${pending})` : '⚠ 离线';
+                    indicator.title = pending > 0 
+                        ? `离线模式 - ${pending} 个更改已排队，将在联网后同步`
+                        : '离线模式 - 更改将保存在本地';
+                    break;
+                case 'conflict':
+                    text.textContent = '⚡ 冲突';
+                    indicator.title = '检测到同步冲突，请检查通知';
+                    break;
+                default:
+                    text.textContent = '？';
+                    indicator.title = '同步状态未知';
+            }
+        }
+
         // 自动保存优化
         let autoSaveTimer;
         function scheduleAutoSave() {
@@ -6325,10 +6466,7 @@ ${state.messages.slice(-5).map(m =>
                 // 更新平台选择器
                 updatePlatformSelectWithCustom();
 
-                // 保存到localStorage
-                localStorage.setItem('customApiConfigs', JSON.stringify(state.customApiConfigs));
-                
-                // Save to backend API
+                // Save to backend API (handles localStorage caching internally)
                 if (window.apiClient) {
                     window.apiClient.saveSettings({
                         globalVariables: state.globalVariables,
@@ -6391,9 +6529,8 @@ ${state.messages.slice(-5).map(m =>
             }
 
             delete state.customApiConfigs[state.currentCustomApi];
-            localStorage.setItem('customApiConfigs', JSON.stringify(state.customApiConfigs));
             
-            // Save to backend API
+            // Save to backend API (handles localStorage caching internally)
             if (window.apiClient) {
                 window.apiClient.saveSettings({
                     globalVariables: state.globalVariables,
