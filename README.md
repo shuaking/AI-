@@ -189,6 +189,161 @@ A test page is available at `http://localhost:3000/test-api-client.html` to veri
 - Saving and reading data
 - Online/offline status detection
 
+## Platform Deployment
+
+The application can be deployed to cloud platforms like Railway and Render with minimal configuration. Both platforms support persistent storage for workflow data and automatic SSL/TLS.
+
+### Prerequisites
+
+Before deploying:
+- Ensure you have a Railway or Render account
+- Verify the `server/data` directory will be persisted via platform volumes/disks
+- Plan your environment variables (see `.env.example` for reference)
+
+### Railway Deployment
+
+Railway offers automatic deployments from GitHub with built-in volume support.
+
+#### Step-by-Step Guide
+
+1. **Create a New Project**
+   - Connect your GitHub repository to Railway
+   - Railway will auto-detect the Node.js project and use `railway.json` config
+
+2. **Create a Persistent Volume**
+   - In your Railway project, navigate to your service settings
+   - Go to "Volumes" and click "New Volume"
+   - Set mount path to `/app/server/data`
+   - This ensures workflow data persists across deployments
+
+3. **Configure Environment Variables**
+   
+   Required variables:
+   ```
+   NODE_ENV=production
+   PORT=3000
+   HOST=0.0.0.0
+   DATA_DIR=/app/server/data
+   ```
+   
+   Optional (configure CORS if needed):
+   ```
+   CORS_ORIGINS=https://your-domain.com
+   SOCKET_ALLOWED_ORIGINS=https://your-domain.com
+   ```
+
+4. **Deploy**
+   - Railway will automatically build and deploy
+   - Monitor logs for successful startup
+   - Check health endpoint: `https://your-app.railway.app/health`
+
+5. **Verify WebSocket Connectivity**
+   - Open the deployed application
+   - Check browser console for Socket.IO connection messages
+   - Look for: `[Socket.IO] Connected to server`
+
+#### Railway Volume Warning
+
+⚠️ **IMPORTANT**: Without a persistent volume mounted at `/app/server/data`, all workflow data will be lost on each deployment. Always configure the volume before saving important data.
+
+### Render Deployment
+
+Render provides declarative infrastructure via `render.yaml` with persistent disk support.
+
+#### Step-by-Step Guide
+
+1. **Create Web Service from Repo**
+   - In Render dashboard, click "New" → "Web Service"
+   - Connect your GitHub/GitLab repository
+   - Render will detect `render.yaml` and pre-fill settings
+
+2. **Review Service Configuration**
+   
+   The `render.yaml` configures:
+   - **Runtime**: Node.js (18+)
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Health Check**: `/health` endpoint
+   - **Persistent Disk**: 1GB mounted at `/app/server/data`
+
+3. **Environment Variables Checklist**
+   
+   Review and customize in Render dashboard:
+   - ✅ `NODE_ENV=production` (pre-configured)
+   - ✅ `PORT=10000` (Render default)
+   - ✅ `HOST=0.0.0.0` (required)
+   - ✅ `DATA_DIR=/app/server/data` (matches disk mount)
+   - ⚠️ `CORS_ORIGINS` - Update to your domain if not using wildcard
+   - ⚠️ `SOCKET_ALLOWED_ORIGINS` - Should match CORS_ORIGINS
+
+4. **Persistent Disk Setup**
+   - Render automatically creates the disk defined in `render.yaml`
+   - Mount path: `/app/server/data`
+   - Size: 1GB (adjust in `render.yaml` if needed)
+   - ⚠️ Do not remove or change mount path after creation
+
+5. **Deploy and Verify**
+   - Click "Create Web Service"
+   - Wait for initial build and deployment
+   - Test health endpoint: `https://your-app.onrender.com/health`
+   - Expected response:
+     ```json
+     {
+       "status": "ok",
+       "timestamp": "2024-01-01T00:00:00.000Z",
+       "uptime": 123.456
+     }
+     ```
+
+6. **WebSocket Verification**
+   - Access the deployed application
+   - Open browser DevTools → Console
+   - Verify Socket.IO connection: Look for connection success logs
+   - Test real-time features to confirm bidirectional communication
+
+#### Render Disk Warning
+
+⚠️ **CRITICAL**: Render's persistent disks are the ONLY way to preserve data across deploys. Without the disk properly mounted at `/app/server/data`:
+- All workflows, roles, prompts, and settings will reset on every deploy
+- Data loss is permanent and unrecoverable
+- Always verify disk status before storing production data
+
+### Post-Deployment Checklist
+
+After deploying to either platform:
+
+- [ ] Health endpoint returns HTTP 200 with valid JSON
+- [ ] Static assets (index.html) load correctly
+- [ ] WebSocket connection establishes successfully
+- [ ] REST API endpoints respond (test `/api/workflows`)
+- [ ] Data persists after service restart/redeploy
+- [ ] CORS headers allow your frontend domain
+- [ ] Socket.IO CORS allows WebSocket connections
+- [ ] Environment-specific URLs are configured
+
+### Common Deployment Issues
+
+**Issue**: `Cannot GET /`  
+**Solution**: Verify `public` directory is included in deployment and `express.static` middleware is configured.
+
+**Issue**: Socket.IO connection fails  
+**Solution**: 
+- Check `SOCKET_ALLOWED_ORIGINS` includes your domain
+- Verify WebSocket traffic is not blocked by firewall/proxy
+- Ensure HTTPS is used (wss://) if site uses HTTPS
+
+**Issue**: Data not persisting  
+**Solution**:
+- Confirm volume/disk is mounted at correct path
+- Verify `DATA_DIR` environment variable matches mount path
+- Check service logs for file system permission errors
+
+**Issue**: CORS errors in browser console  
+**Solution**:
+- Update `CORS_ORIGINS` to include your frontend domain
+- Remove `*` wildcard in production for security
+- Ensure `SOCKET_ALLOWED_ORIGINS` matches `CORS_ORIGINS`
+
 ## Troubleshooting
 
 ### Port Already in Use

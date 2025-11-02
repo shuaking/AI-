@@ -17,12 +17,12 @@ const createSettingsRouter = require('./routes/settings');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: config.cors,
+  cors: config.socketIO.cors,
   pingTimeout: config.socketIO.pingTimeout,
   pingInterval: config.socketIO.pingInterval
 });
 
-const dataDir = path.join(__dirname, 'data');
+const dataDir = config.dataDir;
 const jsonStore = new JsonStore(dataDir, 30000);
 
 app.set('io', io);
