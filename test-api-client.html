@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Client Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        h2 { color: #666; font-size: 1.2rem; margin-top: 0; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <h1>🧪 API Client Integration Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Fetch Workflows</h2>
+        <button onclick="testGetWorkflows()">Run Test</button>
+        <div id="workflows-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Fetch Roles</h2>
+        <button onclick="testGetRoles()">Run Test</button>
+        <div id="roles-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Fetch Prompts</h2>
+        <button onclick="testGetPrompts()">Run Test</button>
+        <div id="prompts-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: Fetch Settings</h2>
+        <button onclick="testGetSettings()">Run Test</button>
+        <div id="settings-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 5: Save and Read Settings</h2>
+        <button onclick="testSaveSettings()">Run Test</button>
+        <div id="save-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 6: Check Online Status</h2>
+        <button onclick="testOnlineStatus()">Run Test</button>
+        <div id="online-result" class="result"></div>
+    </div>
+
+    <script src="/js/apiClient.js"></script>
+    <script>
+        async function testGetWorkflows() {
+            const resultDiv = document.getElementById('workflows-result');
+            resultDiv.innerHTML = 'Loading...';
+            
+            try {
+                const workflows = await window.apiClient.getWorkflows();
+                const keys = Object.keys(workflows);
+                resultDiv.innerHTML = `<span class="success">✓ Success!</span>\n` +
+                    `Loaded ${keys.length} workflows: ${keys.join(', ')}\n\n` +
+                    JSON.stringify(workflows, null, 2);
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error:</span>\n${error.message}`;
+            }
+        }
+
+        async function testGetRoles() {
+            const resultDiv = document.getElementById('roles-result');
+            resultDiv.innerHTML = 'Loading...';
+            
+            try {
+                const roles = await window.apiClient.getRoles();
+                resultDiv.innerHTML = `<span class="success">✓ Success!</span>\n` +
+                    `Loaded ${roles.length} roles\n\n` +
+                    JSON.stringify(roles.map(r => ({ id: r.id, name: r.name })), null, 2);
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error:</span>\n${error.message}`;
+            }
+        }
+
+        async function testGetPrompts() {
+            const resultDiv = document.getElementById('prompts-result');
+            resultDiv.innerHTML = 'Loading...';
+            
+            try {
+                const prompts = await window.apiClient.getPrompts();
+                resultDiv.innerHTML = `<span class="success">✓ Success!</span>\n` +
+                    `Loaded ${prompts.length} prompts\n\n` +
+                    JSON.stringify(prompts.map(p => ({ id: p.id, name: p.name, type: p.type })), null, 2);
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error:</span>\n${error.message}`;
+            }
+        }
+
+        async function testGetSettings() {
+            const resultDiv = document.getElementById('settings-result');
+            resultDiv.innerHTML = 'Loading...';
+            
+            try {
+                const settings = await window.apiClient.getSettings();
+                resultDiv.innerHTML = `<span class="success">✓ Success!</span>\n` +
+                    `Settings loaded\n\n` +
+                    JSON.stringify(settings, null, 2);
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error:</span>\n${error.message}`;
+            }
+        }
+
+        async function testSaveSettings() {
+            const resultDiv = document.getElementById('save-result');
+            resultDiv.innerHTML = 'Saving...';
+            
+            try {
+                const testSettings = {
+                    globalVariables: {
+                        testVar: 'Test Value ' + new Date().toISOString()
+                    },
+                    customApiConfigs: {}
+                };
+                
+                const result = await window.apiClient.saveSettings(testSettings);
+                
+                // Read back
+                const readBack = await window.apiClient.getSettings();
+                
+                resultDiv.innerHTML = `<span class="success">✓ Success!</span>\n` +
+                    `Save result: ${JSON.stringify(result)}\n\n` +
+                    `Read back: ${JSON.stringify(readBack, null, 2)}`;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error:</span>\n${error.message}`;
+            }
+        }
+
+        async function testOnlineStatus() {
+            const resultDiv = document.getElementById('online-result');
+            
+            const isOnline = window.apiClient.isOnline();
+            resultDiv.innerHTML = `<span class="success">✓ Online Status:</span>\n` +
+                `Browser is ${isOnline ? 'ONLINE' : 'OFFLINE'}`;
+        }
+
+        // Auto-run all tests on load
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('API Client Test Page loaded');
+        });
+    </script>
+</body>
+</html>

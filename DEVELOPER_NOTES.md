@@ -56,7 +56,55 @@ The server handles `SIGTERM` and `SIGINT` signals gracefully, closing all connec
 
 ## Frontend Integration
 
-The frontend is served from the `public` directory. To connect to Socket.IO from the frontend, use:
+The frontend is served from the `public` directory.
+
+### Data Loading Strategy
+
+The application now uses a hybrid data-loading approach:
+
+1. **Primary Source**: REST API endpoints (`/api/workflows`, `/api/roles`, `/api/prompts`, `/api/settings`)
+2. **Cache Layer**: localStorage serves as a fallback and offline cache
+3. **Initialization Flow**:
+   - On page load, the app attempts to fetch data from the REST API
+   - If successful, data is cached in localStorage and merged into the app state
+   - If the API is unreachable (network error or server down), the app falls back to cached localStorage data
+   - If both fail, the app uses hardcoded defaults
+
+### API Client Module
+
+Located at `public/js/apiClient.js`, this module provides:
+
+- **`apiClient.getWorkflows()`** - Fetch workflows from API or cache
+- **`apiClient.saveWorkflows(workflows)`** - Save workflows to API (future)
+- **`apiClient.getRoles()`** - Fetch roles from API or cache
+- **`apiClient.saveRoles(roles)`** - Save roles to API (future)
+- **`apiClient.getPrompts()`** - Fetch prompts from API or cache
+- **`apiClient.savePrompts(prompts)`** - Save prompts to API (future)
+- **`apiClient.getSettings()`** - Fetch settings (variables, API configs) from API or cache
+- **`apiClient.saveSettings(settings)`** - Save settings to API
+- **`apiClient.isOnline()`** - Check if browser is online
+- **`apiClient.request(url, options)`** - Low-level HTTP request with retry
+
+Features:
+- Automatic retry (1 attempt) on network errors
+- Request timeout (10 seconds default)
+- Online/offline detection
+- Consistent error handling
+- localStorage caching for offline support
+
+Usage example:
+```javascript
+// Data is loaded automatically on page initialization
+// To manually save data:
+window.apiClient.saveSettings({
+  globalVariables: { myVar: 'value' },
+  customApiConfigs: { myApi: {...} }
+});
+```
+
+### Socket.IO Integration
+
+To connect to Socket.IO from the frontend:
 
 ```javascript
 const socket = io();
