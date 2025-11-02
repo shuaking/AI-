@@ -56,6 +56,9 @@ function createSettingsRouter(jsonStore) {
 
       await jsonStore.write(FILENAME, settings);
 
+      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted settings:updated');
+
       res.json({
         success: true,
         message: 'Variables updated successfully',
@@ -109,6 +112,9 @@ function createSettingsRouter(jsonStore) {
       settings.globalVariables[key] = value;
       await jsonStore.write(FILENAME, settings);
 
+      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted settings:updated');
+
       res.json({
         success: true,
         message: 'Variable updated successfully',
@@ -134,6 +140,9 @@ function createSettingsRouter(jsonStore) {
 
       delete settings.globalVariables[key];
       await jsonStore.write(FILENAME, settings);
+
+      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted settings:updated');
 
       res.json({
         success: true,
@@ -182,6 +191,9 @@ function createSettingsRouter(jsonStore) {
       }
 
       await jsonStore.write(FILENAME, settings);
+
+      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted settings:updated');
 
       res.json({
         success: true,
@@ -247,6 +259,9 @@ function createSettingsRouter(jsonStore) {
 
       await jsonStore.write(FILENAME, settings);
 
+      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted settings:updated');
+
       res.json({
         success: true,
         message: 'API config updated successfully',
@@ -272,6 +287,9 @@ function createSettingsRouter(jsonStore) {
 
       delete settings.customApiConfigs[name];
       await jsonStore.write(FILENAME, settings);
+
+      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted settings:updated');
 
       res.json({
         success: true,

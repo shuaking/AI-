@@ -66,6 +66,9 @@ function createPromptsRouter(jsonStore) {
       prompts.push(prompt);
       await jsonStore.write(FILENAME, prompts);
 
+      req.app.get('io').emit('prompts:updated', { data: prompts, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted prompts:updated');
+
       res.status(201).json({
         success: true,
         message: 'Prompt created successfully',
@@ -115,6 +118,9 @@ function createPromptsRouter(jsonStore) {
       prompts[index] = prompt;
       await jsonStore.write(FILENAME, prompts);
 
+      req.app.get('io').emit('prompts:updated', { data: prompts, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted prompts:updated');
+
       res.json({
         success: true,
         message: 'Prompt updated successfully',
@@ -141,6 +147,9 @@ function createPromptsRouter(jsonStore) {
 
       prompts.splice(index, 1);
       await jsonStore.write(FILENAME, prompts);
+
+      req.app.get('io').emit('prompts:updated', { data: prompts, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted prompts:updated');
 
       res.json({
         success: true,

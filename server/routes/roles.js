@@ -66,6 +66,9 @@ function createRolesRouter(jsonStore) {
       roles.push(role);
       await jsonStore.write(FILENAME, roles);
 
+      req.app.get('io').emit('roles:updated', { data: roles, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted roles:updated');
+
       res.status(201).json({
         success: true,
         message: 'Role created successfully',
@@ -115,6 +118,9 @@ function createRolesRouter(jsonStore) {
       roles[index] = role;
       await jsonStore.write(FILENAME, roles);
 
+      req.app.get('io').emit('roles:updated', { data: roles, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted roles:updated');
+
       res.json({
         success: true,
         message: 'Role updated successfully',
@@ -150,6 +156,9 @@ function createRolesRouter(jsonStore) {
 
       roles.splice(index, 1);
       await jsonStore.write(FILENAME, roles);
+
+      req.app.get('io').emit('roles:updated', { data: roles, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted roles:updated');
 
       res.json({
         success: true,

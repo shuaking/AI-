@@ -74,6 +74,9 @@ function createWorkflowsRouter(jsonStore) {
       workflows[id] = workflow;
       await jsonStore.write(FILENAME, workflows);
 
+      req.app.get('io').emit('workflows:updated', { data: workflows, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted workflows:updated');
+
       res.status(201).json({
         success: true,
         message: 'Workflow created successfully',
@@ -112,6 +115,9 @@ function createWorkflowsRouter(jsonStore) {
       workflows[id] = workflow;
       await jsonStore.write(FILENAME, workflows);
 
+      req.app.get('io').emit('workflows:updated', { data: workflows, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted workflows:updated');
+
       res.json({
         success: true,
         message: 'Workflow updated successfully',
@@ -137,6 +143,9 @@ function createWorkflowsRouter(jsonStore) {
 
       delete workflows[id];
       await jsonStore.write(FILENAME, workflows);
+
+      req.app.get('io').emit('workflows:updated', { data: workflows, timestamp: new Date().toISOString() });
+      console.log('[Socket.IO] Emitted workflows:updated');
 
       res.json({
         success: true,

@@ -25,6 +25,8 @@ const io = new Server(server, {
 const dataDir = path.join(__dirname, 'data');
 const jsonStore = new JsonStore(dataDir, 30000);
 
+app.set('io', io);
+
 app.use(cors(config.cors));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
