@@ -10,6 +10,8 @@ Single-page AI workflow studio (v2.2) with Express + Socket.IO backend. The appl
 - **LLM Interface Configuration**: Configure standard and custom LLM APIs with streaming support
 - **Collaborative Workspace**: Chat-style interface with stage progress, message flow, and role mentions
 - **Real-time Communication**: Socket.IO powered real-time updates
+- **Data Persistence**: REST API backend with JSON storage for workflows, roles, prompts, and settings
+- **Offline Support**: Automatic fallback to localStorage cache when offline or server unavailable
 
 ## Prerequisites
 
@@ -78,13 +80,34 @@ PORT=8080 npm start
 ```
 .
 ├── server/
-│   ├── index.js          # Main server entry point
-│   └── config.js         # Configuration module
+│   ├── index.js              # Main server entry point
+│   ├── config.js             # Configuration module
+│   ├── data/                 # JSON data storage
+│   │   ├── workflows.json    # Workflow templates
+│   │   ├── roles.json        # Role definitions
+│   │   ├── prompts.json      # Prompt templates
+│   │   └── settings.json     # User settings and variables
+│   ├── routes/               # REST API routes
+│   │   ├── workflows.js      # Workflow CRUD endpoints
+│   │   ├── roles.js          # Role CRUD endpoints
+│   │   ├── prompts.js        # Prompt CRUD endpoints
+│   │   └── settings.js       # Settings CRUD endpoints
+│   ├── utils/                # Utility modules
+│   │   ├── jsonStore.js      # JSON file storage with caching
+│   │   └── validators.js     # Data validation
+│   └── middleware/           # Express middleware
+│       ├── errorHandler.js   # Error handling
+│       └── requestLogger.js  # Request logging
 ├── public/
-│   └── index.html        # Single-page application UI
-├── package.json          # Node.js dependencies and scripts
-├── .gitignore           # Git ignore rules
-└── README.md            # This file
+│   ├── index.html            # Single-page application UI
+│   └── js/
+│       ├── apiClient.js      # API client with offline support
+│       └── socketClient.js   # Socket.IO client
+├── package.json              # Node.js dependencies and scripts
+├── .gitignore                # Git ignore rules
+├── README.md                 # This file
+├── DEVELOPER_NOTES.md        # Technical documentation
+└── JSON_STORAGE_API_SUMMARY.md  # API documentation
 ```
 
 ## API Endpoints
@@ -92,10 +115,42 @@ PORT=8080 npm start
 ### Health Check
 
 ```
-GET /health
+GET /api/health
 ```
 
 Returns server status and uptime information.
+
+### Data Management
+
+The application provides RESTful API endpoints for managing workflows, roles, prompts, and settings:
+
+#### Workflows
+- `GET /api/workflows` - List all workflows
+- `GET /api/workflows/:id` - Get specific workflow
+- `POST /api/workflows` - Create workflow
+- `PUT /api/workflows/:id` - Update workflow
+- `DELETE /api/workflows/:id` - Delete workflow
+
+#### Roles
+- `GET /api/roles` - List all roles
+- `GET /api/roles/:id` - Get specific role
+- `POST /api/roles` - Create role
+- `PUT /api/roles/:id` - Update role
+- `DELETE /api/roles/:id` - Delete role
+
+#### Prompts
+- `GET /api/prompts` - List all prompts
+- `GET /api/prompts/:id` - Get specific prompt
+- `POST /api/prompts` - Create prompt
+- `PUT /api/prompts/:id` - Update prompt
+- `DELETE /api/prompts/:id` - Delete prompt
+
+#### Settings
+- `GET /api/settings` - Get all settings
+- `PUT /api/settings/variables` - Update global variables
+- `PUT /api/settings/api-configs` - Update custom API configurations
+
+See `server/README.md` for detailed API documentation.
 
 ## Socket.IO
 
@@ -115,6 +170,24 @@ const socket = io();
 - All static assets are served from the `public` directory
 - Socket.IO namespace is configured at the root level (`/`)
 - CORS is enabled by default for development purposes
+
+### Data Loading Strategy
+
+The application uses a hybrid approach for data management:
+
+1. **Primary Source**: On page load, the application fetches data from REST API endpoints
+2. **Caching**: Successfully fetched data is cached in localStorage for offline use
+3. **Offline Mode**: If the API is unavailable, the app automatically falls back to cached data
+4. **Graceful Degradation**: If both API and cache fail, the app uses hardcoded defaults
+
+This ensures the application works seamlessly both online and offline.
+
+### Testing the API Client
+
+A test page is available at `http://localhost:3000/test-api-client.html` to verify the API client integration and test various scenarios including:
+- Fetching workflows, roles, prompts, and settings
+- Saving and reading data
+- Online/offline status detection
 
 ## Troubleshooting
 

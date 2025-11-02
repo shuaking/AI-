@@ -2678,6 +2678,9 @@
     <!-- Socket.IO客户端库 -->
     <script src="/socket.io/socket.io.js"></script>
     
+    <!-- API客户端模块 -->
+    <script src="/js/apiClient.js"></script>
+    
     <!-- Socket客户端模块 -->
     <script src="/js/socketClient.js"></script>
 
@@ -2991,7 +2994,11 @@
         const commonEmojis = ['😀', '😎', '🤔', '👍', '👎', '💡', '🚀', '⭐', '🎯', '📈', '🔥', '💼', '🎨', '🔧', '📊', '🏆'];
 
         // ========== 初始化 ==========
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize data from API first
+            await initializeData();
+            
+            // Then initialize UI components
             loadSavedConfig();
             initPanelControls();
             initKeyboardShortcuts();
@@ -3016,6 +3023,101 @@
                 showShortcutHint();
             }, 2000);
         });
+
+        // 异步加载数据
+        async function initializeData() {
+            console.log('[Init] Loading data from API...');
+            
+            try {
+                // Load all data in parallel
+                const [workflows, roles, prompts, settings] = await Promise.all([
+                    window.apiClient.getWorkflows(),
+                    window.apiClient.getRoles(),
+                    window.apiClient.getPrompts(),
+                    window.apiClient.getSettings()
+                ]);
+
+                // Merge workflows (backend workflows can extend preset workflows)
+                // We keep preset workflows as they are defined in code
+                // This allows backend to add custom workflows if needed
+                console.log('[Init] Loaded workflows:', Object.keys(workflows).length);
+
+                // Load custom roles from backend
+                // Filter out preset roles (keep only custom ones)
+                const presetRoleIds = presetRoles.map(r => r.id);
+                const customRolesFromBackend = roles.filter(r => !presetRoleIds.includes(r.id));
+                state.customRoles = customRolesFromBackend;
+                console.log('[Init] Loaded custom roles:', customRolesFromBackend.length);
+
+                // Load custom prompts from backend
+                // Filter out preset prompts (keep only custom ones)
+                const presetPromptIds = promptTemplates.map(p => p.id);
+                const customPromptsFromBackend = prompts.filter(p => !presetPromptIds.includes(p.id));
+                state.customPrompts = customPromptsFromBackend;
+                console.log('[Init] Loaded custom prompts:', customPromptsFromBackend.length);
+
+                // Load settings (variables and API configs)
+                if (settings.globalVariables) {
+                    state.globalVariables = settings.globalVariables;
+                }
+                if (settings.customApiConfigs) {
+                    state.customApiConfigs = settings.customApiConfigs;
+                }
+                console.log('[Init] Loaded settings');
+
+                showNotification('✅ 数据加载成功', 'success');
+            } catch (error) {
+                console.error('[Init] Failed to load data:', error);
+                showNotification('⚠️ 数据加载失败，使用本地缓存', 'warning');
+                
+                // Fallback to localStorage (already handled by apiClient)
+                // We just need to load from the old localStorage keys for backwards compatibility
+                loadLegacyLocalStorage();
+            }
+        }
+
+        // Load from legacy localStorage for backwards compatibility
+        function loadLegacyLocalStorage() {
+            // Load custom roles from old key if cache doesn't exist
+            const savedRoles = localStorage.getItem('customRoles');
+            if (savedRoles && state.customRoles.length === 0) {
+                try {
+                    state.customRoles = JSON.parse(savedRoles);
+                } catch (e) {
+                    console.error('[Init] Failed to parse legacy customRoles:', e);
+                }
+            }
+
+            // Load custom prompts from old key if cache doesn't exist
+            const savedPrompts = localStorage.getItem('customPrompts');
+            if (savedPrompts && state.customPrompts.length === 0) {
+                try {
+                    state.customPrompts = JSON.parse(savedPrompts);
+                } catch (e) {
+                    console.error('[Init] Failed to parse legacy customPrompts:', e);
+                }
+            }
+
+            // Load global variables from old key if empty
+            const savedVariables = localStorage.getItem('globalVariables');
+            if (savedVariables && Object.keys(state.globalVariables).length === 0) {
+                try {
+                    state.globalVariables = JSON.parse(savedVariables);
+                } catch (e) {
+                    console.error('[Init] Failed to parse legacy globalVariables:', e);
+                }
+            }
+
+            // Load custom API configs from old key if empty
+            const savedCustomApis = localStorage.getItem('customApiConfigs');
+            if (savedCustomApis && Object.keys(state.customApiConfigs).length === 0) {
+                try {
+                    state.customApiConfigs = JSON.parse(savedCustomApis);
+                } catch (e) {
+                    console.error('[Init] Failed to parse legacy customApiConfigs:', e);
+                }
+            }
+        }
 
         // 初始化错误边界处理
         function initErrorHandling() {
@@ -3674,10 +3776,29 @@
 
         function saveCustomPrompts() {
             localStorage.setItem('customPrompts', JSON.stringify(state.customPrompts));
+            
+            // Save to backend API (async, fire and forget)
+            if (window.apiClient) {
+                // Combine preset and custom prompts for backend
+                const allPrompts = [...promptTemplates, ...state.customPrompts];
+                window.apiClient.savePrompts(allPrompts).catch(err => {
+                    console.error('[Save] Failed to save prompts to backend:', err);
+                });
+            }
         }
 
         function saveGlobalVariables() {
             localStorage.setItem('globalVariables', JSON.stringify(state.globalVariables));
+            
+            // Save to backend API (async, fire and forget)
+            if (window.apiClient) {
+                window.apiClient.saveSettings({
+                    globalVariables: state.globalVariables,
+                    customApiConfigs: state.customApiConfigs
+                }).catch(err => {
+                    console.error('[Save] Failed to save settings to backend:', err);
+                });
+            }
         }
 
         // ========== 工作流功能 ==========
@@ -3777,6 +3898,15 @@
 
         function saveCustomRoles() {
             localStorage.setItem('customRoles', JSON.stringify(state.customRoles));
+            
+            // Save to backend API (async, fire and forget)
+            if (window.apiClient) {
+                // Combine preset and custom roles for backend
+                const allRoles = [...presetRoles, ...state.customRoles];
+                window.apiClient.saveRoles(allRoles).catch(err => {
+                    console.error('[Save] Failed to save roles to backend:', err);
+                });
+            }
         }
 
         function initEmojiPicker() {
@@ -6198,6 +6328,16 @@ ${state.messages.slice(-5).map(m =>
                 // 保存到localStorage
                 localStorage.setItem('customApiConfigs', JSON.stringify(state.customApiConfigs));
                 
+                // Save to backend API
+                if (window.apiClient) {
+                    window.apiClient.saveSettings({
+                        globalVariables: state.globalVariables,
+                        customApiConfigs: state.customApiConfigs
+                    }).catch(err => {
+                        console.error('[Save] Failed to save settings to backend:', err);
+                    });
+                }
+                
                 // 设置为当前使用的API
                 state.currentPlatform = 'custom';
                 state.apiKey = apiKey;
@@ -6252,6 +6392,16 @@ ${state.messages.slice(-5).map(m =>
 
             delete state.customApiConfigs[state.currentCustomApi];
             localStorage.setItem('customApiConfigs', JSON.stringify(state.customApiConfigs));
+            
+            // Save to backend API
+            if (window.apiClient) {
+                window.apiClient.saveSettings({
+                    globalVariables: state.globalVariables,
+                    customApiConfigs: state.customApiConfigs
+                }).catch(err => {
+                    console.error('[Save] Failed to save settings to backend:', err);
+                });
+            }
             
             // 清空表单
             clearCustomApiForm();
