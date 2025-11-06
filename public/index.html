@@ -2784,6 +2784,7 @@
             lastMessage: null,
             lastSpeaker: null,
             isInteractiveMode: false, // 是否处于交互模式
+            userWantsNextStage: false, // 用户是否想要进入下一阶段
             eventListeners: new Map(),
             requestQueue: [],
             isProcessingRequest: false,
@@ -4495,6 +4496,7 @@ ${role.personality}
             state.executionPlanGenerated = false;
             state.lastMessage = null;
             state.lastSpeaker = null;
+            state.userWantsNextStage = false; // 重置下一步标志
             state.isInteractiveMode = true; // 启用交互模式
             
             // 更新性能指标
@@ -4555,6 +4557,9 @@ ${role.personality}
                     
                     // 等待用户交互
                     await waitForInteraction();
+                    
+                    // 重置用户下一步标志
+                    state.userWantsNextStage = false;
                 } else {
                     // 决策阶段
                     await requestDecision();
@@ -4595,13 +4600,25 @@ ${role.personality}
             const maxWaitTime = 300000; // 5分钟最大等待时间
             const startTime = Date.now();
             
-            while (state.isInteractiveMode && state.isWorkflowRunning && !state.currentDecision) {
+            console.log('[Workflow] Waiting for user interaction...', {
+                isInteractiveMode: state.isInteractiveMode,
+                isWorkflowRunning: state.isWorkflowRunning,
+                currentDecision: state.currentDecision,
+                userWantsNextStage: state.userWantsNextStage
+            });
+            
+            while (state.isInteractiveMode && state.isWorkflowRunning && !state.currentDecision && !state.userWantsNextStage) {
                 if (Date.now() - startTime > maxWaitTime) {
                     showNotification('等待超时，继续下一阶段', 'info');
                     break;
                 }
                 await sleep(1000);
             }
+            
+            console.log('[Workflow] Interaction wait completed', {
+                userWantsNextStage: state.userWantsNextStage,
+                currentDecision: state.currentDecision
+            });
         }
 
         async function facilitatorSpeak(stage) {
@@ -5165,6 +5182,7 @@ ${context}
 
         function completeWorkflow() {
             state.isWorkflowRunning = false;
+            state.userWantsNextStage = false; // 重置下一步标志
             updateCurrentStage('已完成');
             
             // 隐藏角色选择器
@@ -5277,6 +5295,25 @@ ${context}
                     showNotification('请选择决策选项或使用快捷命令（如：同意、修改、重新开始）', 'info');
                 }
             } else {
+                // 检查是否是继续下一步命令
+                if (message === '继续下一步' || message === '下一步' || message === 'next step') {
+                    if (state.isWorkflowRunning && state.isInteractiveMode) {
+                        console.log('[Workflow] User requested next stage');
+                        state.userWantsNextStage = true;
+                        showNotification('正在进入下一阶段...', 'info');
+                        
+                        // 添加用户消息到聊天记录
+                        addMessage('user', {
+                            content: message,
+                            sender: '决策者'
+                        });
+                    } else {
+                        showNotification('请先启动工作流', 'warning');
+                    }
+                    input.value = '';
+                    return;
+                }
+                
                 // 检查是否请求特定角色发言
                 const roleCommandMap = {};
                 const allRoles = [...presetRoles, ...state.customRoles];
@@ -5288,6 +5325,18 @@ ${context}
                 const roleId = roleCommandMap[message] || roleCommandMap[message.toLowerCase()];
                 if (roleId && state.selectedRoles.includes(roleId)) {
                     requestRoleSpeak(roleId);
+                    input.value = '';
+                    return;
+                }
+                
+                // 检查是否是结束工作流命令
+                if (message === '结束工作流' || message === '结束' || message === 'end workflow') {
+                    if (state.isWorkflowRunning) {
+                        completeWorkflow();
+                        showNotification('工作流已结束', 'info');
+                    } else {
+                        showNotification('当前没有运行的工作流', 'warning');
+                    }
                     input.value = '';
                     return;
                 }
@@ -5622,6 +5671,7 @@ ${state.messages.slice(-5).map(m =>
             state.executionPlanGenerated = false;
             state.lastMessage = null;
             state.lastSpeaker = null;
+            state.userWantsNextStage = false; // 重置下一步标志
             state.isInteractiveMode = false;
             
             // 清理请求队列
