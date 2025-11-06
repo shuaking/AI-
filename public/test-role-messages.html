@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role Message Display Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #e0e0e0;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        #output {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #2196f3;
+            padding-left: 10px;
+        }
+        .log-success { border-left-color: #4caf50; }
+        .log-error { border-left-color: #f44336; }
+        .log-warning { border-left-color: #ff9800; }
+        
+        /* 模拟聊天容器样式 */
+        #chatMessages {
+            height: 300px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        
+        .message {
+            margin-bottom: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 85%;
+        }
+        
+        .message.role {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom-left-radius: 4px;
+            position: relative;
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            flex-direction: column;
+        }
+        
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        
+        .message-content {
+            line-height: 1.4;
+        }
+        
+        .message-time {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Role Message Display Test</h1>
+    
+    <div class="section">
+        <h3>1. Load Main Application</h3>
+        <button onclick="loadMainApp()">Load Main App</button>
+        <div id="app-status"></div>
+    </div>
+
+    <div class="section">
+        <h3>2. Test Role Message Creation</h3>
+        <button onclick="testCreateRoleMessage()">Create Test Role Message</button>
+        <button onclick="testAddMessage()">Test addMessage Function</button>
+        <button onclick="testRequestRoleSpeak()">Test requestRoleSpeak Function</button>
+        <button onclick="clearMessages()">Clear Messages</button>
+    </div>
+
+    <div class="section">
+        <h3>3. Debug Tools</h3>
+        <button onclick="debugDisplay()">Debug Message Display</button>
+        <button onclick="fixDisplay()">Fix Message Display</button>
+        <button onclick="showState()">Show State</button>
+    </div>
+
+    <div class="section">
+        <h3>4. Message Display Area</h3>
+        <div id="chatMessages"></div>
+    </div>
+
+    <div id="output"></div>
+
+    <script>
+        // 模拟基本状态和函数
+        let state = {
+            messages: [],
+            isWorkflowRunning: true,
+            selectedRoles: ['facilitator', 'editor'],
+            customRoles: [],
+            performanceMetrics: {
+                messageCount: 0,
+                errorCount: 0,
+                averageResponseTime: 0
+            }
+        };
+
+        const presetRoles = [
+            {
+                id: 'facilitator',
+                name: '主持人',
+                title: '工作流主持人',
+                emoji: '🎯',
+                color: '#00d4ff',
+                personality: '专业、客观、善于引导'
+            },
+            {
+                id: 'editor',
+                name: '编辑员',
+                title: '执行方案编辑',
+                emoji: '📝',
+                color: '#4ade80',
+                personality: '细致、有条理、专业'
+            }
+        ];
+
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.appendChild(entry);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function loadMainApp() {
+            const status = document.getElementById('app-status');
+            
+            // 检查是否有主应用函数
+            const hasAddMessage = typeof window.addMessage !== 'undefined';
+            const hasCreateRoleMessage = typeof window.createRoleMessage !== 'undefined';
+            const hasRequestRoleSpeak = typeof window.requestRoleSpeak !== 'undefined';
+            
+            let html = '<ul>';
+            html += `<li>addMessage: ${hasAddMessage ? '✅' : '❌'}</li>`;
+            html += `<li>createRoleMessage: ${hasCreateRoleMessage ? '✅' : '❌'}</li>`;
+            html += `<li>requestRoleSpeak: ${hasRequestRoleSpeak ? '✅' : '❌'}</li>`;
+            html += '</ul>';
+            
+            status.innerHTML = html;
+            log('Main app functions checked', hasAddMessage && hasCreateRoleMessage && hasRequestRoleSpeak ? 'success' : 'error');
+        }
+
+        function testCreateRoleMessage() {
+            if (typeof window.createRoleMessage === 'function') {
+                const testData = {
+                    role: presetRoles[0],
+                    content: '这是一个测试角色消息，用于验证消息显示功能是否正常工作。'
+                };
+                
+                const messageEl = window.createRoleMessage(testData);
+                if (messageEl) {
+                    document.getElementById('chatMessages').appendChild(messageEl);
+                    log('Role message created successfully', 'success');
+                } else {
+                    log('Failed to create role message', 'error');
+                }
+            } else {
+                // 使用内联测试函数
+                testInlineCreateRoleMessage();
+            }
+        }
+
+        function testInlineCreateRoleMessage() {
+            const role = presetRoles[0];
+            const message = document.createElement('div');
+            message.className = 'message role';
+            message.id = `test-role-${Date.now()}`;
+            
+            const time = new Date().toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            message.innerHTML = `
+                <div class="message-header">
+                    <div class="message-avatar" style="background: ${role.color}20; color: ${role.color};">
+                        ${role.emoji}
+                    </div>
+                    <div class="message-meta">
+                        <div class="message-name">${role.name}</div>
+                        <div class="message-role">${role.title}</div>
+                    </div>
+                </div>
+                <div class="message-content">这是一个测试角色消息，用于验证消息显示功能是否正常工作。</div>
+                <div class="message-time">${time}</div>
+            `;
+            
+            document.getElementById('chatMessages').appendChild(message);
+            state.messages.push({
+                type: 'role',
+                role: role,
+                content: message.querySelector('.message-content').textContent,
+                timestamp: Date.now()
+            });
+            
+            log('Inline role message created successfully', 'success');
+        }
+
+        function testAddMessage() {
+            if (typeof window.addMessage === 'function') {
+                window.addMessage('role', {
+                    role: presetRoles[1],
+                    content: '通过addMessage函数测试的消息。'
+                });
+                log('addMessage test completed', 'success');
+            } else {
+                log('addMessage function not available', 'error');
+            }
+        }
+
+        function testRequestRoleSpeak() {
+            if (typeof window.requestRoleSpeak === 'function') {
+                window.requestRoleSpeak('facilitator');
+                log('requestRoleSpeak test initiated', 'success');
+            } else {
+                log('requestRoleSpeak function not available', 'error');
+            }
+        }
+
+        function clearMessages() {
+            document.getElementById('chatMessages').innerHTML = '';
+            state.messages = [];
+            log('Messages cleared', 'info');
+        }
+
+        function debugDisplay() {
+            if (typeof window.debugMessageDisplay === 'function') {
+                const result = window.debugMessageDisplay();
+                log('Debug completed: ' + JSON.stringify(result), 'success');
+            } else {
+                // 内联调试
+                const container = document.getElementById('chatMessages');
+                const messages = container.querySelectorAll('.message');
+                log(`Container exists: ${!!container}`, 'info');
+                log(`Messages in DOM: ${messages.length}`, 'info');
+                log(`Messages in state: ${state.messages.length}`, 'info');
+                
+                messages.forEach((msg, index) => {
+                    const isVisible = msg.offsetParent !== null;
+                    log(`Message ${index + 1}: visible=${isVisible}`, isVisible ? 'success' : 'error');
+                });
+            }
+        }
+
+        function fixDisplay() {
+            if (typeof window.fixMessageDisplay === 'function') {
+                window.fixMessageDisplay();
+                log('Display fix applied', 'success');
+            } else {
+                // 内联修复
+                const container = document.getElementById('chatMessages');
+                const messages = container.querySelectorAll('.message');
+                messages.forEach(msg => {
+                    msg.style.display = 'flex';
+                    msg.style.visibility = 'visible';
+                    msg.style.opacity = '1';
+                });
+                log('Inline display fix applied', 'success');
+            }
+        }
+
+        function showState() {
+            log('Current state: ' + JSON.stringify(state, null, 2), 'info');
+        }
+
+        // 初始化
+        setTimeout(() => {
+            loadMainApp();
+        }, 500);
+    </script>
+</body>
+</html>
