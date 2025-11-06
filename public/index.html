@@ -1472,6 +1472,12 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-bottom-left-radius: 4px;
             position: relative;
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            flex-direction: column;
+            margin-bottom: 12px;
+            max-width: 85%;
         }
 
         .message.facilitator {
@@ -4378,19 +4384,31 @@
 
         // 请求特定角色发言
         async function requestRoleSpeak(roleId) {
+            console.log('[requestRoleSpeak] Starting role speak request:', { roleId });
+            
             const allRoles = [...presetRoles, ...state.customRoles];
             const role = allRoles.find(r => r.id === roleId);
             
-            if (!role || !state.isWorkflowRunning) {
-                showNotification('无法请求该角色发言', 'error');
+            if (!role) {
+                console.error('[requestRoleSpeak] Role not found:', { roleId, availableRoles: allRoles.map(r => r.id) });
+                showNotification('角色不存在', 'error');
                 return;
             }
+            
+            if (!state.isWorkflowRunning) {
+                console.warn('[requestRoleSpeak] Workflow not running');
+                showNotification('请先启动工作流', 'error');
+                return;
+            }
+            
+            console.log('[requestRoleSpeak] Requesting role to speak:', role.name);
             
             // 更新最后一个消息和发言者
             const lastRoleMessage = state.messages.slice(-1).find(m => m.role);
             if (lastRoleMessage) {
                 state.lastSpeaker = lastRoleMessage.role.name;
                 state.lastMessage = lastRoleMessage.content;
+                console.log('[requestRoleSpeak] Updated last speaker:', state.lastSpeaker);
             }
             
             updateRoleWaiting(role, true);
@@ -4398,8 +4416,17 @@
             try {
                 // 构建角色互动Prompt
                 const prompt = buildInteractivePrompt(role);
-                const message = await generateRoleMessage(role, prompt);
+                console.log('[requestRoleSpeak] Generated prompt:', prompt.substring(0, 200) + '...');
                 
+                const message = await generateRoleMessage(role, prompt);
+                console.log('[requestRoleSpeak] Generated message:', message.substring(0, 200) + '...');
+                
+                // 确保消息内容不为空
+                if (!message || message.trim().length === 0) {
+                    throw new Error('生成的消息内容为空');
+                }
+                
+                console.log('[requestRoleSpeak] Adding message to display...');
                 addMessage('role', {
                     role: role,
                     content: message
@@ -4408,9 +4435,19 @@
                 // 更新状态
                 state.lastSpeaker = role.name;
                 state.lastMessage = message;
+                
+                console.log('[requestRoleSpeak] Role speak completed successfully');
+                
             } catch (error) {
-                console.error('角色发言失败:', error);
-                showNotification(`${role.name}发言失败，请重试`, 'error');
+                console.error('[requestRoleSpeak] Role speak failed:', error);
+                showNotification(`${role.name}发言失败：${error.message}`, 'error');
+                
+                // 添加错误消息到聊天记录以便调试
+                addMessage('system', {
+                    type: 'custom',
+                    content: `⚠️ ${role.name}发言失败: ${error.message}`
+                });
+                
             } finally {
                 updateRoleWaiting(role, false);
             }
@@ -4800,8 +4837,11 @@ ${context}
 
         // 生成角色消息（支持自定义API）
         async function generateRoleMessage(role, prompt) {
+            console.log('[generateRoleMessage] Starting message generation:', { role: role.name, outputMode: state.outputMode });
+            
             // 添加请求队列管理，防止并发请求
             if (state.isProcessingRequest) {
+                console.log('[generateRoleMessage] Request queued, waiting...');
                 return new Promise((resolve) => {
                     state.requestQueue.push({ role, prompt, resolve });
                 });
@@ -4817,13 +4857,16 @@ ${context}
                     // 使用自定义API
                     const config = state.customApiConfigs[state.currentCustomApi];
                     adapter = new CustomApiAdapter(config);
+                    console.log('[generateRoleMessage] Using custom API:', config.endpoint);
                 } else {
                     // 使用标准API
                     adapter = new LLMAdapter(state.currentPlatform, state.apiKey);
+                    console.log('[generateRoleMessage] Using standard API:', state.currentPlatform);
                 }
                 
                 let message;
                 if (state.outputMode === 'stream') {
+                    console.log('[generateRoleMessage] Using stream mode');
                     let fullMessage = '';
                     const messageEl = createStreamingMessage(role);
                     
@@ -4835,8 +4878,16 @@ ${context}
                     finalizeStreamingMessage(messageEl, fullMessage);
                     message = fullMessage;
                 } else {
+                    console.log('[generateRoleMessage] Using batch mode');
                     message = await adapter.generateResponse(prompt);
                 }
+                
+                // 验证生成的消息
+                if (!message || message.trim().length === 0) {
+                    throw new Error('API返回空消息');
+                }
+                
+                console.log('[generateRoleMessage] Message generated successfully:', message.substring(0, 100) + '...');
                 
                 // 更新性能指标
                 const responseTime = Date.now() - startTime;
@@ -4847,10 +4898,15 @@ ${context}
                 
                 return message;
             } catch (error) {
-                console.error(`生成${role.name}消息失败:`, error);
+                console.error(`[generateRoleMessage] 生成${role.name}消息失败:`, error);
                 state.performanceMetrics.errorCount++;
                 showNotification(`生成${role.name}消息失败：${error.message}`, 'error');
-                throw error;
+                
+                // 提供备用消息
+                const fallbackMessage = `抱歉，我是${role.name}，现在遇到了一些技术问题，无法正常回应。请稍后再试。`;
+                console.log('[generateRoleMessage] Using fallback message');
+                return fallbackMessage;
+                
             } finally {
                 state.isProcessingRequest = false;
                 
@@ -4950,6 +5006,11 @@ ${context}
         }
 
         function finalizeStreamingMessage(messageEl, content) {
+            console.log('[finalizeStreamingMessage] Finalizing message:', {
+                messageId: messageEl.id,
+                contentLength: content.length
+            });
+            
             messageEl.classList.remove('streaming');
             
             // 移除状态指示器
@@ -4958,73 +5019,114 @@ ${context}
                 statusEl.remove();
             }
             
+            // 确保内容已更新
+            const contentEl = messageEl.querySelector('.message-content');
+            if (contentEl) {
+                contentEl.textContent = content;
+            }
+            
             // 获取角色信息
             const avatarEl = messageEl.querySelector('.message-avatar');
+            if (!avatarEl) {
+                console.error('[finalizeStreamingMessage] Avatar element not found');
+                state.currentStreamingMessage = null;
+                state.currentRole = null;
+                return;
+            }
+            
             const role = [...presetRoles, ...state.customRoles].find(r => 
                 r.emoji === avatarEl.textContent
             );
             
-            if (role) {
-                // 为编辑员消息添加下载按钮
-                if (role.id === 'editor') {
-                    const actionsEl = document.createElement('div');
-                    actionsEl.className = 'message-actions';
-                    actionsEl.innerHTML = `
-                        <button class="message-action-btn" onclick="copyMessage('${messageEl.id}')">复制</button>
-                        <button class="message-action-btn download" onclick="downloadMarkdown('${messageEl.id}')">下载MD</button>
-                        <button class="message-action-btn" onclick="regenerateMessage('${messageEl.id}')">重新生成</button>
-                    `;
-                    messageEl.appendChild(actionsEl);
-                    
-                    // 设置Markdown样式
-                    const contentEl = messageEl.querySelector('.message-content');
+            if (!role) {
+                console.error('[finalizeStreamingMessage] Role not found for avatar:', avatarEl.textContent);
+                state.currentStreamingMessage = null;
+                state.currentRole = null;
+                return;
+            }
+            
+            console.log('[finalizeStreamingMessage] Found role:', role.name);
+            
+            // 为编辑员消息添加下载按钮
+            if (role.id === 'editor') {
+                const actionsEl = document.createElement('div');
+                actionsEl.className = 'message-actions';
+                actionsEl.innerHTML = `
+                    <button class="message-action-btn" onclick="copyMessage('${messageEl.id}')">复制</button>
+                    <button class="message-action-btn download" onclick="downloadMarkdown('${messageEl.id}')">下载MD</button>
+                    <button class="message-action-btn" onclick="regenerateMessage('${messageEl.id}')">重新生成</button>
+                `;
+                messageEl.appendChild(actionsEl);
+                
+                // 设置Markdown样式
+                if (contentEl) {
                     contentEl.classList.add('markdown');
-                    
-                    // 保存到状态
-                    const existingIndex = state.messages.findIndex(m => m.type === 'role' && m.role && m.role.id === 'editor');
-                    if (existingIndex === -1) {
-                        state.messages.push({
-                            type: 'role',
-                            role: role,
-                            content: content,
-                            isMarkdown: true,
-                            timestamp: Date.now()
-                        });
-                    } else {
-                        state.messages[existingIndex].content = content;
-                        state.messages[existingIndex].timestamp = Date.now();
-                    }
-                    
-                    // 保存Markdown内容用于下载
-                    state.currentMarkdownContent = content;
-                } else {
-                    const actionsEl = document.createElement('div');
-                    actionsEl.className = 'message-actions';
-                    actionsEl.innerHTML = `
-                        <button class="message-action-btn" onclick="copyMessage('${messageEl.id}')">复制</button>
-                        <button class="message-action-btn" onclick="regenerateMessage('${messageEl.id}')">重新生成</button>
-                    `;
-                    messageEl.appendChild(actionsEl);
-                    
-                    // 避免重复保存
-                    const existingIndex = state.messages.findIndex(m => 
-                        m.type === 'role' && m.role && m.role.id === role.id && 
-                        Math.abs(m.timestamp - Date.now()) < 5000
-                    );
-                    
-                    if (existingIndex === -1) {
-                        state.messages.push({
-                            type: 'role',
-                            role: role,
-                            content: content,
-                            timestamp: Date.now()
-                        });
-                    }
                 }
+                
+                // 保存到状态
+                const existingIndex = state.messages.findIndex(m => m.type === 'role' && m.role && m.role.id === 'editor');
+                if (existingIndex === -1) {
+                    state.messages.push({
+                        type: 'role',
+                        role: role,
+                        content: content,
+                        isMarkdown: true,
+                        timestamp: Date.now()
+                    });
+                } else {
+                    state.messages[existingIndex].content = content;
+                    state.messages[existingIndex].timestamp = Date.now();
+                }
+                
+                // 保存Markdown内容用于下载
+                state.currentMarkdownContent = content;
+                console.log('[finalizeStreamingMessage] Editor message saved');
+            } else {
+                // 普通角色消息
+                const actionsEl = document.createElement('div');
+                actionsEl.className = 'message-actions';
+                actionsEl.innerHTML = `
+                    <button class="message-action-btn" onclick="copyMessage('${messageEl.id}')">复制</button>
+                    <button class="message-action-btn" onclick="regenerateMessage('${messageEl.id}')">重新生成</button>
+                `;
+                messageEl.appendChild(actionsEl);
+                
+                // 避免重复保存
+                const existingIndex = state.messages.findIndex(m => 
+                    m.type === 'role' && m.role && m.role.id === role.id && 
+                    Math.abs(m.timestamp - Date.now()) < 5000
+                );
+                
+                if (existingIndex === -1) {
+                    state.messages.push({
+                        type: 'role',
+                        role: role,
+                        content: content,
+                        timestamp: Date.now()
+                    });
+                    console.log('[finalizeStreamingMessage] Role message saved to state');
+                } else {
+                    console.log('[finalizeStreamingMessage] Role message already exists, skipping');
+                }
+            }
+            
+            // 确保消息可见
+            messageEl.style.display = 'flex';
+            messageEl.style.visibility = 'visible';
+            messageEl.style.opacity = '1';
+            
+            // 滚动到底部
+            const container = document.getElementById('chatMessages');
+            if (container) {
+                setTimeout(() => {
+                    container.scrollTop = container.scrollHeight;
+                }, 100);
             }
             
             state.currentStreamingMessage = null;
             state.currentRole = null;
+            
+            console.log('[finalizeStreamingMessage] Message finalized successfully');
         }
 
         // 决策功能优化
@@ -5388,42 +5490,91 @@ ${context}
 
         function addMessage(type, data) {
             const container = document.getElementById('chatMessages');
-            let messageEl;
             
-            switch (type) {
-                case 'system':
-                    if (data.type === 'divider') {
-                        messageEl = createDivider(data.content);
-                    } else if (data.type === 'decision') {
-                        // 创建一个包装器来容纳决策面板
-                        messageEl = document.createElement('div');
-                        messageEl.className = 'message system';
-                        messageEl.id = data.messageId || `custom-${Date.now()}`;
-                        messageEl.innerHTML = data.content;
-                    } else if (data.type === 'custom') {
-                        messageEl = document.createElement('div');
-                        messageEl.className = 'message system';
-                        messageEl.id = data.messageId || `custom-${Date.now()}`;
-                        messageEl.innerHTML = data.content;
-                    }
-                    break;
-                    
-                case 'user':
-                    messageEl = createUserMessage(data);
-                    break;
-                    
-                case 'role':
-                    messageEl = createRoleMessage(data);
-                    break;
-                    
-                case 'decision':
-                    messageEl = createDecisionMessage(data);
-                    break;
+            // Debug: Check if container exists
+            if (!container) {
+                console.error('[addMessage] Chat container not found!', {
+                    type,
+                    data,
+                    containerElement: document.getElementById('chatMessages')
+                });
+                showNotification('消息容器未找到，请刷新页面', 'error');
+                return;
             }
             
-            if (messageEl) {
-                container.appendChild(messageEl);
-                container.scrollTop = container.scrollHeight;
+            let messageEl;
+            
+            try {
+                switch (type) {
+                    case 'system':
+                        if (data.type === 'divider') {
+                            messageEl = createDivider(data.content);
+                        } else if (data.type === 'decision') {
+                            // 创建一个包装器来容纳决策面板
+                            messageEl = document.createElement('div');
+                            messageEl.className = 'message system';
+                            messageEl.id = data.messageId || `custom-${Date.now()}`;
+                            messageEl.innerHTML = data.content;
+                        } else if (data.type === 'custom') {
+                            messageEl = document.createElement('div');
+                            messageEl.className = 'message system';
+                            messageEl.id = data.messageId || `custom-${Date.now()}`;
+                            messageEl.innerHTML = data.content;
+                        }
+                        break;
+                        
+                    case 'user':
+                        messageEl = createUserMessage(data);
+                        break;
+                        
+                    case 'role':
+                        messageEl = createRoleMessage(data);
+                        break;
+                        
+                    case 'decision':
+                        messageEl = createDecisionMessage(data);
+                        break;
+                        
+                    default:
+                        console.warn('[addMessage] Unknown message type:', type);
+                        return;
+                }
+                
+                if (messageEl) {
+                    // Debug: Log message creation
+                    console.log('[addMessage] Creating message:', {
+                        type,
+                        messageEl,
+                        messageContent: data.content?.substring(0, 100) + '...',
+                        role: data.role?.name
+                    });
+                    
+                    // Ensure message element has proper styles
+                    messageEl.style.display = 'flex';
+                    messageEl.style.visibility = 'visible';
+                    messageEl.style.opacity = '1';
+                    
+                    container.appendChild(messageEl);
+                    
+                    // Force scroll to bottom with a small delay to ensure rendering
+                    setTimeout(() => {
+                        container.scrollTop = container.scrollHeight;
+                    }, 10);
+                    
+                    // Debug: Verify message was added
+                    const addedElement = container.querySelector(`#${messageEl.id}`) || 
+                                        container.querySelector('.message:last-child');
+                    if (addedElement) {
+                        console.log('[addMessage] Message successfully added to DOM');
+                    } else {
+                        console.error('[addMessage] Failed to add message to DOM');
+                    }
+                } else {
+                    console.error('[addMessage] Failed to create message element:', { type, data });
+                }
+            } catch (error) {
+                console.error('[addMessage] Error adding message:', error, { type, data });
+                showNotification('添加消息失败', 'error');
             }
         }
 
@@ -5460,8 +5611,24 @@ ${context}
         }
 
         function createRoleMessage(data) {
+            // Debug: Validate input data
+            if (!data || !data.role || !data.content) {
+                console.error('[createRoleMessage] Invalid data:', data);
+                showNotification('角色消息数据无效', 'error');
+                return null;
+            }
+            
+            console.log('[createRoleMessage] Creating role message:', {
+                role: data.role.name,
+                content: data.content.substring(0, 100) + '...',
+                isMarkdown: data.isMarkdown
+            });
+            
             const message = document.createElement('div');
+            const messageId = `role-msg-${data.role.id}-${Date.now()}`;
+            message.id = messageId;
             message.className = 'message role';
+            
             if (data.role.id === 'facilitator') {
                 message.classList.add('facilitator');
             } else if (data.role.id === 'editor') {
@@ -5473,14 +5640,23 @@ ${context}
                 minute: '2-digit' 
             });
             
+            // Ensure role has all required properties
+            const role = {
+                name: data.role.name || '未知角色',
+                title: data.role.title || '',
+                emoji: data.role.emoji || '🤖',
+                color: data.role.color || '#00d4ff',
+                ...data.role
+            };
+            
             message.innerHTML = `
                 <div class="message-header">
-                    <div class="message-avatar" style="background: ${data.role.color}20; color: ${data.role.color};">
-                        ${data.role.emoji}
+                    <div class="message-avatar" style="background: ${role.color}20; color: ${role.color};">
+                        ${role.emoji}
                     </div>
                     <div class="message-meta">
-                        <div class="message-name">${data.role.name}</div>
-                        <div class="message-role">${data.role.title}</div>
+                        <div class="message-name">${role.name}</div>
+                        <div class="message-role">${role.title}</div>
                     </div>
                 </div>
                 <div class="message-content">${escapeHtml(data.content)}</div>
@@ -5500,9 +5676,13 @@ ${context}
                         ...data,
                         timestamp: Date.now()
                     });
+                    console.log('[createRoleMessage] Message saved to state');
+                } else {
+                    console.log('[createRoleMessage] Message already exists in state, skipping');
                 }
             }
             
+            console.log('[createRoleMessage] Role message created successfully:', messageId);
             return message;
         }
 
@@ -5749,6 +5929,78 @@ ${state.messages.slice(-5).map(m =>
             };
             return text.replace(/[&<>"']/g, m => map[m]);
         }
+
+        // 调试函数：检查消息显示状态
+        function debugMessageDisplay() {
+            console.log('[Debug] Message Display Status:');
+            console.log('  Container exists:', !!document.getElementById('chatMessages'));
+            console.log('  Container visible:', document.getElementById('chatMessages')?.style.display !== 'none');
+            console.log('  Messages in DOM:', document.querySelectorAll('#chatMessages .message').length);
+            console.log('  Role messages in DOM:', document.querySelectorAll('#chatMessages .message.role').length);
+            console.log('  Messages in state:', state.messages.length);
+            console.log('  Role messages in state:', state.messages.filter(m => m.type === 'role').length);
+            console.log('  Workflow running:', state.isWorkflowRunning);
+            console.log('  Selected roles:', state.selectedRoles);
+            
+            const container = document.getElementById('chatMessages');
+            if (container) {
+                const roleMessages = container.querySelectorAll('.message.role');
+                roleMessages.forEach((msg, index) => {
+                    const content = msg.querySelector('.message-content');
+                    const isVisible = msg.offsetParent !== null;
+                    const hasContent = content && content.textContent.trim().length > 0;
+                    console.log(`  Role message ${index + 1}: visible=${isVisible}, hasContent=${hasContent}, text="${content?.textContent.substring(0, 50)}..."`);
+                });
+            }
+            
+            return {
+                containerExists: !!document.getElementById('chatMessages'),
+                domMessages: document.querySelectorAll('#chatMessages .message').length,
+                domRoleMessages: document.querySelectorAll('#chatMessages .message.role').length,
+                stateMessages: state.messages.length,
+                stateRoleMessages: state.messages.filter(m => m.type === 'role').length
+            };
+        }
+
+        // 修复消息显示的函数
+        function fixMessageDisplay() {
+            console.log('[Fix] Attempting to fix message display...');
+            
+            const container = document.getElementById('chatMessages');
+            if (!container) {
+                console.error('[Fix] Container not found');
+                return false;
+            }
+            
+            // 检查并修复隐藏的消息
+            const hiddenMessages = container.querySelectorAll('.message.role[style*="display: none"], .message.role[style*="visibility: hidden"], .message.role[style*="opacity: 0"]');
+            hiddenMessages.forEach(msg => {
+                console.log('[Fix] Fixing hidden message:', msg.id);
+                msg.style.display = 'flex';
+                msg.style.visibility = 'visible';
+                msg.style.opacity = '1';
+            });
+            
+            // 检查并修复空内容消息
+            const emptyMessages = container.querySelectorAll('.message.role .message-content:empty');
+            emptyMessages.forEach(content => {
+                const roleMsg = content.closest('.message.role');
+                if (roleMsg) {
+                    console.log('[Fix] Fixing empty message:', roleMsg.id);
+                    content.textContent = '[消息内容为空]';
+                }
+            });
+            
+            // 滚动到底部
+            container.scrollTop = container.scrollHeight;
+            
+            console.log('[Fix] Message display fix completed');
+            return true;
+        }
+
+        // 添加到全局作用域以便调试
+        window.debugMessageDisplay = debugMessageDisplay;
+        window.fixMessageDisplay = fixMessageDisplay;
 
         // ========== 简化的自定义API适配器 ==========
         class CustomApiAdapter {
