@@ -1466,15 +1466,12 @@
             border-bottom-right-radius: 4px;
         }
 
-        .message.role {
+        .message.role { display: flex !important; visibility: visible !important; opacity: 1 !important;
             align-self: flex-start;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-bottom-left-radius: 4px;
             position: relative;
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
             flex-direction: column;
             margin-bottom: 12px;
             max-width: 85%;
@@ -4423,6 +4420,7 @@
                 
                 // 确保消息内容不为空
                 if (!message || message.trim().length === 0) {
+                    console.warn('[requestRoleSpeak] generated message content is empty');
                     throw new Error('生成的消息内容为空');
                 }
                 
@@ -5028,7 +5026,7 @@ ${context}
             // 获取角色信息
             const avatarEl = messageEl.querySelector('.message-avatar');
             if (!avatarEl) {
-                console.error('[finalizeStreamingMessage] Avatar element not found');
+                console.error('[finalizeStreamingMessage] avatarEl not found');
                 state.currentStreamingMessage = null;
                 state.currentRole = null;
                 return;
@@ -5557,9 +5555,7 @@ ${context}
                     container.appendChild(messageEl);
                     
                     // Force scroll to bottom with a small delay to ensure rendering
-                    setTimeout(() => {
-                        container.scrollTop = container.scrollHeight;
-                    }, 10);
+                    setTimeout(() => container.scrollTop = container.scrollHeight, 10);
                     
                     // Debug: Verify message was added
                     const addedElement = container.querySelector(`#${messageEl.id}`) || 
