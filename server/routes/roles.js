@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { validateRole } = require('../utils/validators');
+const { emitSocketEvent } = require('../utils/socketEvents');
 
 function createRolesRouter(jsonStore) {
   const FILENAME = 'roles.json';
@@ -66,8 +67,12 @@ function createRolesRouter(jsonStore) {
       roles.push(role);
       await jsonStore.write(FILENAME, roles);
 
-      req.app.get('io').emit('roles:updated', { data: roles, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted roles:updated');
+      emitSocketEvent(
+        req,
+        'roles:updated',
+        { data: roles },
+        { resourceType: 'role', action: 'create', resourceId: role.id }
+      );
 
       res.status(201).json({
         success: true,
@@ -118,8 +123,12 @@ function createRolesRouter(jsonStore) {
       roles[index] = role;
       await jsonStore.write(FILENAME, roles);
 
-      req.app.get('io').emit('roles:updated', { data: roles, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted roles:updated');
+      emitSocketEvent(
+        req,
+        'roles:updated',
+        { data: roles },
+        { resourceType: 'role', action: 'update', resourceId: id }
+      );
 
       res.json({
         success: true,
@@ -157,8 +166,12 @@ function createRolesRouter(jsonStore) {
       roles.splice(index, 1);
       await jsonStore.write(FILENAME, roles);
 
-      req.app.get('io').emit('roles:updated', { data: roles, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted roles:updated');
+      emitSocketEvent(
+        req,
+        'roles:updated',
+        { data: roles },
+        { resourceType: 'role', action: 'delete', resourceId: id }
+      );
 
       res.json({
         success: true,

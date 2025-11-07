@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { validateWorkflow } = require('../utils/validators');
+const { emitSocketEvent } = require('../utils/socketEvents');
 
 function createWorkflowsRouter(jsonStore) {
   const FILENAME = 'workflows.json';
@@ -74,8 +75,12 @@ function createWorkflowsRouter(jsonStore) {
       workflows[id] = workflow;
       await jsonStore.write(FILENAME, workflows);
 
-      req.app.get('io').emit('workflows:updated', { data: workflows, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted workflows:updated');
+      emitSocketEvent(
+        req,
+        'workflows:updated',
+        { data: workflows },
+        { resourceType: 'workflow', action: 'create', resourceId: id }
+      );
 
       res.status(201).json({
         success: true,
@@ -115,8 +120,12 @@ function createWorkflowsRouter(jsonStore) {
       workflows[id] = workflow;
       await jsonStore.write(FILENAME, workflows);
 
-      req.app.get('io').emit('workflows:updated', { data: workflows, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted workflows:updated');
+      emitSocketEvent(
+        req,
+        'workflows:updated',
+        { data: workflows },
+        { resourceType: 'workflow', action: 'update', resourceId: id }
+      );
 
       res.json({
         success: true,
@@ -144,8 +153,12 @@ function createWorkflowsRouter(jsonStore) {
       delete workflows[id];
       await jsonStore.write(FILENAME, workflows);
 
-      req.app.get('io').emit('workflows:updated', { data: workflows, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted workflows:updated');
+      emitSocketEvent(
+        req,
+        'workflows:updated',
+        { data: workflows },
+        { resourceType: 'workflow', action: 'delete', resourceId: id }
+      );
 
       res.json({
         success: true,

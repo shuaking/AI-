@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { validatePrompt } = require('../utils/validators');
+const { emitSocketEvent } = require('../utils/socketEvents');
 
 function createPromptsRouter(jsonStore) {
   const FILENAME = 'prompts.json';
@@ -66,8 +67,12 @@ function createPromptsRouter(jsonStore) {
       prompts.push(prompt);
       await jsonStore.write(FILENAME, prompts);
 
-      req.app.get('io').emit('prompts:updated', { data: prompts, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted prompts:updated');
+      emitSocketEvent(
+        req,
+        'prompts:updated',
+        { data: prompts },
+        { resourceType: 'prompt', action: 'create', resourceId: prompt.id }
+      );
 
       res.status(201).json({
         success: true,
@@ -118,8 +123,12 @@ function createPromptsRouter(jsonStore) {
       prompts[index] = prompt;
       await jsonStore.write(FILENAME, prompts);
 
-      req.app.get('io').emit('prompts:updated', { data: prompts, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted prompts:updated');
+      emitSocketEvent(
+        req,
+        'prompts:updated',
+        { data: prompts },
+        { resourceType: 'prompt', action: 'update', resourceId: id }
+      );
 
       res.json({
         success: true,
@@ -148,8 +157,12 @@ function createPromptsRouter(jsonStore) {
       prompts.splice(index, 1);
       await jsonStore.write(FILENAME, prompts);
 
-      req.app.get('io').emit('prompts:updated', { data: prompts, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted prompts:updated');
+      emitSocketEvent(
+        req,
+        'prompts:updated',
+        { data: prompts },
+        { resourceType: 'prompt', action: 'delete', resourceId: id }
+      );
 
       res.json({
         success: true,
