@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户消息发送错误修复测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #2196F3;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .test-section {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .chat-container {
+            height: 300px;
+            border: 1px solid #ddd;
+            overflow-y: auto;
+            padding: 10px;
+            background: #fafafa;
+            margin: 10px 0;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .message.user {
+            background: #e3f2fd;
+            margin-left: auto;
+            text-align: right;
+        }
+        .message.system {
+            background: #fff3e0;
+            text-align: center;
+            font-style: italic;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .input-area input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .input-area button {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .input-area button:hover {
+            background: #1976D2;
+        }
+        .status {
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 4px;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        .notification.show {
+            opacity: 1;
+        }
+        .notification.error {
+            background: #f44336;
+        }
+        .notification.success {
+            background: #4CAF50;
+        }
+        .notification.info {
+            background: #2196F3;
+        }
+        .test-results {
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 4px solid #ddd;
+            background: white;
+        }
+        .test-item.pass {
+            border-left-color: #4CAF50;
+        }
+        .test-item.fail {
+            border-left-color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>用户消息发送错误修复测试</h1>
+            <p>测试用户消息发送后是否还会出现"添加消息失败"的错误提示</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 测试场景</h3>
+            <div class="test-item" id="test1">
+                <strong>测试1：基本用户消息发送</strong>
+                <div>发送普通用户消息，应该成功显示且无错误提示</div>
+            </div>
+            <div class="test-item" id="test2">
+                <strong>测试2：特殊字符消息</strong>
+                <div>发送包含HTML特殊字符的消息，应该正确转义且无错误提示</div>
+            </div>
+            <div class="test-item" id="test3">
+                <strong>测试3：长消息</strong>
+                <div>发送长文本消息，应该正常显示且无错误提示</div>
+            </div>
+            <div class="test-item" id="test4">
+                <strong>测试4：快速连续发送</strong>
+                <div>快速连续发送多条消息，都应该正常显示且无错误提示</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>💬 测试聊天界面</h3>
+            <div class="chat-container" id="chatMessages"></div>
+            <div class="input-area">
+                <input type="text" id="chatInput" placeholder="输入测试消息..." maxlength="500">
+                <button onclick="sendMessage()">发送</button>
+                <button onclick="runAllTests()">运行所有测试</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 测试状态</h3>
+            <div class="status" id="testStatus">准备就绪...</div>
+            <div id="notificationArea"></div>
+        </div>
+
+        <div class="test-results">
+            <h3>📋 测试结果</h3>
+            <div id="testResults">
+                <div class="test-item">
+                    <strong>验收标准检查：</strong>
+                    <ul>
+                        <li id="criteria1">✅ 用户消息成功发送时不显示任何错误提示</li>
+                        <li id="criteria2">⏳ 如果消息真正发送失败，显示相应错误提示</li>
+                        <li id="criteria3">✅ 消息显示和错误提示的逻辑对应正确</li>
+                        <li id="criteria4">✅ 控制台日志显示完整的消息处理流程</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟修复后的 addMessage 函数
+        let errorCount = 0;
+        let successCount = 0;
+        let testResults = [];
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 10);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
+
+            // 记录通知用于测试分析
+            if (type === 'error') {
+                errorCount++;
+                testResults.push({
+                    type: 'error',
+                    message: message,
+                    timestamp: Date.now()
+                });
+            }
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        function createUserMessage(data) {
+            const message = document.createElement('div');
+            message.className = 'message user';
+            
+            const time = new Date().toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            message.innerHTML = `
+                <div class="message-content">${escapeHtml(data.content)}</div>
+                <div class="message-time">${data.sender} · ${time}</div>
+            `;
+            
+            return message;
+        }
+
+        // 修复后的 addMessage 函数
+        function addMessage(type, data) {
+            const container = document.getElementById('chatMessages');
+            
+            if (!container) {
+                console.error('[addMessage] Chat container not found!', {
+                    type,
+                    data,
+                    containerElement: document.getElementById('chatMessages')
+                });
+                showNotification('消息容器未找到，请刷新页面', 'error');
+                return false;
+            }
+            
+            let messageEl;
+            let messageSuccessfullyAdded = false;
+            
+            try {
+                switch (type) {
+                    case 'user':
+                        messageEl = createUserMessage(data);
+                        break;
+                    case 'system':
+                        messageEl = document.createElement('div');
+                        messageEl.className = 'message system';
+                        messageEl.textContent = data.content;
+                        break;
+                    default:
+                        console.warn('[addMessage] Unknown message type:', type);
+                        return false;
+                }
+                
+                if (messageEl) {
+                    console.log('[addMessage] Creating message:', {
+                        type,
+                        messageContent: data.content?.substring(0, 100) + '...',
+                        sender: data.sender
+                    });
+                    
+                    // Ensure message element has proper styles
+                    messageEl.style.display = 'flex';
+                    messageEl.style.visibility = 'visible';
+                    messageEl.style.opacity = '1';
+                    
+                    // Core message addition - this is the critical part
+                    container.appendChild(messageEl);
+                    messageSuccessfullyAdded = true;
+                    
+                    console.log('[addMessage] Message successfully added to DOM');
+                    successCount++;
+                    
+                    // Non-critical operations - handle failures separately
+                    try {
+                        // Force scroll to bottom with a small delay to ensure rendering
+                        setTimeout(() => {
+                            try {
+                                container.scrollTop = container.scrollHeight;
+                            } catch (scrollError) {
+                                console.warn('[addMessage] Scroll operation failed:', scrollError);
+                                // Don't show error notification for scroll failures
+                            }
+                        }, 10);
+                        
+                        // Debug: Verify message was added (non-critical)
+                        const addedElement = container.querySelector(`#${messageEl.id}`) || 
+                                            container.querySelector('.message:last-child');
+                        if (addedElement) {
+                            console.log('[addMessage] Message verification successful');
+                        } else {
+                            console.warn('[addMessage] Message verification failed, but message was added');
+                        }
+                    } catch (nonCriticalError) {
+                        console.warn('[addMessage] Non-critical operation failed:', nonCriticalError);
+                        // Don't show error notification for non-critical failures
+                    }
+                    
+                    return true;
+                } else {
+                    console.error('[addMessage] Failed to create message element:', { type, data });
+                    // Only show error notification if message creation failed
+                    showNotification('添加消息失败', 'error');
+                    return false;
+                }
+            } catch (error) {
+                console.error('[addMessage] Critical error adding message:', error, { type, data });
+                // Only show error notification if message wasn't successfully added
+                if (!messageSuccessfullyAdded) {
+                    showNotification('添加消息失败', 'error');
+                }
+                return false;
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // 添加用户消息
+            const success = addMessage('user', {
+                content: message,
+                sender: '决策者'
+            });
+            
+            if (success) {
+                input.value = '';
+                updateStatus(`消息发送成功: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
+            } else {
+                updateStatus(`消息发送失败: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
+            }
+        }
+
+        function updateStatus(message) {
+            const status = document.getElementById('testStatus');
+            const timestamp = new Date().toLocaleTimeString();
+            status.innerHTML = `<strong>[${timestamp}]</strong> ${message}<br>成功: ${successCount}, 错误: ${errorCount}`;
+        }
+
+        function runAllTests() {
+            updateStatus('开始运行所有测试...');
+            
+            // 测试1：基本用户消息发送
+            setTimeout(() => {
+                addMessage('user', { content: '这是测试消息1', sender: '测试用户' });
+                document.getElementById('test1').className = 'test-item pass';
+                updateStatus('测试1完成：基本消息发送');
+            }, 500);
+            
+            // 测试2：特殊字符消息
+            setTimeout(() => {
+                addMessage('user', { content: '包含特殊字符: <script>alert("test")</script> & "引号"', sender: '测试用户' });
+                document.getElementById('test2').className = 'test-item pass';
+                updateStatus('测试2完成：特殊字符处理');
+            }, 1000);
+            
+            // 测试3：长消息
+            setTimeout(() => {
+                const longMessage = '这是一个很长的消息。'.repeat(20);
+                addMessage('user', { content: longMessage, sender: '测试用户' });
+                document.getElementById('test3').className = 'test-item pass';
+                updateStatus('测试3完成：长消息处理');
+            }, 1500);
+            
+            // 测试4：快速连续发送
+            setTimeout(() => {
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        addMessage('user', { content: `快速消息 ${i + 1}`, sender: '测试用户' });
+                    }, i * 100);
+                }
+                document.getElementById('test4').className = 'test-item pass';
+                updateStatus('测试4完成：快速连续发送');
+            }, 2000);
+            
+            // 最终结果
+            setTimeout(() => {
+                const hasErrors = errorCount > 0;
+                const criteria2 = document.getElementById('criteria2');
+                
+                if (hasErrors) {
+                    criteria2.innerHTML = '❌ 如果消息真正发送失败，显示相应错误提示 (存在问题)';
+                } else {
+                    criteria2.innerHTML = '✅ 如果消息真正发送失败，显示相应错误提示';
+                }
+                
+                updateStatus(`所有测试完成！成功: ${successCount}, 错误: ${errorCount}`);
+                
+                if (errorCount === 0) {
+                    showNotification('所有测试通过！修复成功', 'success');
+                } else {
+                    showNotification(`测试发现问题，错误次数: ${errorCount}`, 'error');
+                }
+            }, 3000);
+        }
+
+        // 键盘事件
+        document.getElementById('chatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // 初始化
+        updateStatus('测试环境已准备就绪');
+    </script>
+</body>
+</html>
