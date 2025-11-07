@@ -1,0 +1,36 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "services": [
+      {
+        "name": "ai-workflow-studio",
+        "source": ".",
+        "installCommand": "npm install",
+        "startCommand": "npm start",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 30,
+        "numReplicas": 1,
+        "restartPolicyType": "ON_FAILURE",
+        "volumes": [
+          {
+            "name": "workflow-data",
+            "mountPath": "/app/server/data"
+          }
+        ],
+        "envVariables": {
+          "PORT": "3000",
+          "HOST": "0.0.0.0",
+          "NODE_ENV": "production",
+          "CORS_ORIGINS": "*",
+          "SOCKET_ALLOWED_ORIGINS": "*",
+          "DATA_DIR": "/app/server/data",
+          "PUBLIC_API_URL": "https://your-api.com",
+          "PUBLIC_SOCKET_URL": "https://your-api.com"
+        }
+      }
+    ]
+  }
+}

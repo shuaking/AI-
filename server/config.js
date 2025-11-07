@@ -17,10 +17,24 @@ function parseCorsOrigins(originsStr) {
   return origins.length === 1 ? origins[0] : origins;
 }
 
+/**
+ * Resolve the data directory path, supporting absolute and relative inputs
+ * @param {string|undefined} dir - Directory path from environment variables
+ * @returns {string} - Absolute path to the data directory
+ */
+function resolveDataDir(dir) {
+  if (!dir) {
+    return path.join(__dirname, 'data');
+  }
+
+  return path.isAbsolute(dir) ? dir : path.resolve(process.cwd(), dir);
+}
+
 const config = {
   port: process.env.PORT || 3000,
   host: process.env.HOST || '0.0.0.0',
   publicDir: path.join(__dirname, '../public'),
+  dataDir: resolveDataDir(process.env.DATA_DIR),
   cors: {
     origin: parseCorsOrigins(process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || '*'),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

@@ -50,6 +50,8 @@ Run the server in production mode:
 npm start
 ```
 
+This command executes the `start:prod` script (`NODE_ENV=production node server/index.js`).
+
 ## Accessing the Application
 
 Once the server is running, open your browser and navigate to:
@@ -345,6 +347,33 @@ If the frontend doesn't connect to the backend:
 2. Check that `public/runtime-config.js` exists
 3. Look for error messages in browser console
 4. Verify environment variables are set in hosting platform
+
+## 平台部署
+
+本项目内置了 Railway 与 Render 的全栈部署配置文件（`railway.json` 与 `render.yaml`），可将 Express + Socket.IO 服务器与静态资源一键发布到托管平台。
+
+### Railway 部署步骤
+
+1. 在 Railway 中导入 GitHub 仓库，选择使用仓库根目录的 `railway.json` 自动生成服务。
+2. 在 **Variables** 中根据 `.env.example` 配置以下变量：`PORT`、`HOST`、`NODE_ENV`、`CORS_ORIGINS`、`SOCKET_ALLOWED_ORIGINS`、`DATA_DIR`、`PUBLIC_API_URL`、`PUBLIC_SOCKET_URL`。
+3. 在 **Volumes** 中创建名为 `workflow-data` 的持久化卷，并挂载到 `/app/server/data`，用于保存 JSON 数据文件。
+4. 确认构建命令为 `npm install`、启动命令为 `npm start`，并保留健康检查路径 `/health`。
+5. 部署完成后访问 `https://your-railway-app.up.railway.app/health` 验证状态码为 200，并在浏览器中确认 Socket.IO 指示灯为“Online”。
+
+### Render 部署步骤
+
+1. 在 Render 中创建新的 Web Service，导入仓库并选择使用根目录的 `render.yaml`。
+2. Render 会自动读取构建命令 `npm install` 与启动命令 `npm start`，如需自定义请在服务设置中调整。
+3. 在 **Disks** 中创建名为 `workflow-data` 的磁盘（至少 1GB），挂载路径设置为 `/app/server/data`。
+4. 在 **Environment** 选项卡中添加 `.env.example` 中列出的全部变量，`NODE_ENV=production`、`DATA_DIR=/app/server/data`、`CORS_ORIGINS` 等必须与后端和前端域名保持一致。
+5. 部署后访问 `https://your-render-app.onrender.com/health` 验证健康检查，通过浏览器 Console 或多个标签页操作确认 Socket.IO 可以完成 WebSocket 升级。
+
+### 通用指南
+
+- **数据持久化**：创建或编辑工作流后，重启服务并确认数据仍然存在，以验证 `/app/server/data` 的卷/磁盘挂载是否生效。
+- **WebSocket 验证**：在两个浏览器标签页中打开应用，观察实时同步与 Console 中的 `[SocketClient]` 日志，确保 Socket.IO 连接成功。
+- **环境变量对照**：部署前对照 `.env.example` 设置所有键值，`PUBLIC_API_URL` 与 `PUBLIC_SOCKET_URL` 应指向同一个后端域。
+- **故障排查**：健康检查异常时查看平台日志；Socket.IO 连接失败通常与 CORS 或代理设置相关，必要时检查 `SOCKET_ALLOWED_ORIGINS` 和 HTTPS 配置。
 
 ## Troubleshooting
 

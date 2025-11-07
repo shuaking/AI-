@@ -4,7 +4,8 @@
   "description": "AI工作流工作室 - Single-page AI workflow studio with Express + Socket.IO backend",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js",
+    "start": "npm run start:prod",
+    "start:prod": "NODE_ENV=production node server/index.js",
     "dev": "nodemon server/index.js",
     "build:frontend": "node scripts/generate-config.js",
     "validate:deploy": "node scripts/validate-split-deploy.js"
