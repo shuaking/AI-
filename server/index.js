@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const path = require('path');
+const fs = require('fs');
 const config = require('./config');
 
 const JsonStore = require('./utils/jsonStore');
@@ -22,7 +22,15 @@ const io = new Server(server, {
   pingInterval: config.socketIO.pingInterval
 });
 
-const dataDir = path.join(__dirname, 'data');
+const dataDir = config.dataDir;
+
+try {
+  fs.mkdirSync(dataDir, { recursive: true });
+} catch (error) {
+  console.error(`[Server] Failed to initialize data directory at ${dataDir}:`, error);
+  process.exit(1);
+}
+
 const jsonStore = new JsonStore(dataDir, 30000);
 
 app.set('io', io);
