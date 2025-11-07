@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { validateSettings } = require('../utils/validators');
+const { emitSocketEvent } = require('../utils/socketEvents');
 
 function createSettingsRouter(jsonStore) {
   const FILENAME = 'settings.json';
@@ -56,8 +57,12 @@ function createSettingsRouter(jsonStore) {
 
       await jsonStore.write(FILENAME, settings);
 
-      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted settings:updated');
+      emitSocketEvent(
+        req,
+        'settings:updated',
+        { data: settings },
+        { resourceType: 'settings', action: 'update', resourceId: 'variables' }
+      );
 
       res.json({
         success: true,
@@ -112,8 +117,12 @@ function createSettingsRouter(jsonStore) {
       settings.globalVariables[key] = value;
       await jsonStore.write(FILENAME, settings);
 
-      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted settings:updated');
+      emitSocketEvent(
+        req,
+        'settings:updated',
+        { data: settings },
+        { resourceType: 'settings', action: 'update', resourceId: key }
+      );
 
       res.json({
         success: true,
@@ -141,8 +150,12 @@ function createSettingsRouter(jsonStore) {
       delete settings.globalVariables[key];
       await jsonStore.write(FILENAME, settings);
 
-      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted settings:updated');
+      emitSocketEvent(
+        req,
+        'settings:updated',
+        { data: settings },
+        { resourceType: 'settings', action: 'delete', resourceId: key }
+      );
 
       res.json({
         success: true,
@@ -192,8 +205,12 @@ function createSettingsRouter(jsonStore) {
 
       await jsonStore.write(FILENAME, settings);
 
-      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted settings:updated');
+      emitSocketEvent(
+        req,
+        'settings:updated',
+        { data: settings },
+        { resourceType: 'settings', action: 'update', resourceId: 'api-configs' }
+      );
 
       res.json({
         success: true,
@@ -259,8 +276,12 @@ function createSettingsRouter(jsonStore) {
 
       await jsonStore.write(FILENAME, settings);
 
-      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted settings:updated');
+      emitSocketEvent(
+        req,
+        'settings:updated',
+        { data: settings },
+        { resourceType: 'settings', action: 'update', resourceId: name }
+      );
 
       res.json({
         success: true,
@@ -288,8 +309,12 @@ function createSettingsRouter(jsonStore) {
       delete settings.customApiConfigs[name];
       await jsonStore.write(FILENAME, settings);
 
-      req.app.get('io').emit('settings:updated', { data: settings, timestamp: new Date().toISOString() });
-      console.log('[Socket.IO] Emitted settings:updated');
+      emitSocketEvent(
+        req,
+        'settings:updated',
+        { data: settings },
+        { resourceType: 'settings', action: 'delete', resourceId: name }
+      );
 
       res.json({
         success: true,

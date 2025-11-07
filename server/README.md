@@ -172,6 +172,10 @@ All incoming data is validated before being persisted:
 - Format validation (IDs, URLs, colors, etc.)
 - Business rule validation (e.g., can't delete required roles)
 
+## Realtime Updates
+
+The server broadcasts Socket.IO events whenever workflows, roles, prompts, or settings change. Events are emitted after successful persistence and include the full resource payload plus an ISO 8601 timestamp. See [SOCKET_EVENTS.md](./SOCKET_EVENTS.md) for detailed event timing, payload examples, and client integration guidance.
+
 ## Testing
 
 See `TEST_API.md` for comprehensive manual testing instructions.
