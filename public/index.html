@@ -4395,15 +4395,26 @@
             return null;
         }
 
-        // 请求特定角色发言
+        // 请求特定角色发言（增强版）
         async function requestRoleSpeak(roleId) {
-            console.log('[requestRoleSpeak] Starting role speak request:', { roleId });
+            console.log('[requestRoleSpeak] ===== Starting enhanced role speak request =====');
+            console.log('[requestRoleSpeak] Role ID:', roleId);
+            console.log('[requestRoleSpeak] Current state:', {
+                isWorkflowRunning: state.isWorkflowRunning,
+                currentStage: state.currentStage?.name,
+                messagesCount: state.messages?.length || 0,
+                lastSpeaker: state.lastSpeaker,
+                topic: state.topic
+            });
             
             const allRoles = [...presetRoles, ...state.customRoles];
             const role = allRoles.find(r => r.id === roleId);
             
             if (!role) {
-                console.error('[requestRoleSpeak] Role not found:', { roleId, availableRoles: allRoles.map(r => r.id) });
+                console.error('[requestRoleSpeak] Role not found:', { 
+                    roleId, 
+                    availableRoles: allRoles.map(r => ({ id: r.id, name: r.name }))
+                });
                 showNotification('角色不存在', 'error');
                 return;
             }
@@ -4414,31 +4425,51 @@
                 return;
             }
             
-            console.log('[requestRoleSpeak] Requesting role to speak:', role.name);
+            console.log('[requestRoleSpeak] Requesting role to speak:', {
+                id: role.id,
+                name: role.name,
+                title: role.title,
+                personality: role.personality?.substring(0, 50) + '...'
+            });
             
-            // 更新最后一个消息和发言者
+            // 更新最后一个消息和发言者（保持向后兼容）
             const lastRoleMessage = state.messages.slice(-1).find(m => m.role);
             if (lastRoleMessage) {
                 state.lastSpeaker = lastRoleMessage.role.name;
                 state.lastMessage = lastRoleMessage.content;
-                console.log('[requestRoleSpeak] Updated last speaker:', state.lastSpeaker);
+                console.log('[requestRoleSpeak] Updated last speaker for compatibility:', state.lastSpeaker);
             }
             
             updateRoleWaiting(role, true);
             
             try {
-                // 构建角色互动Prompt
+                // 构建增强的角色互动Prompt（包含完整上下文）
+                console.log('[requestRoleSpeak] Building enhanced prompt with context...');
                 const prompt = buildInteractivePrompt(role);
-                console.log('[requestRoleSpeak] Generated prompt:', prompt.substring(0, 200) + '...');
+                console.log('[requestRoleSpeak] Enhanced prompt generated:', {
+                    promptLength: prompt.length,
+                    lines: prompt.split('\n').length,
+                    preview: prompt.substring(0, 300) + '...'
+                });
                 
+                // 生成角色消息
+                console.log('[requestRoleSpeak] Generating role message...');
                 const message = await generateRoleMessage(role, prompt);
-                console.log('[requestRoleSpeak] Generated message:', message.substring(0, 200) + '...');
+                console.log('[requestRoleSpeak] Message generated successfully:', {
+                    length: message.length,
+                    preview: message.substring(0, 200) + '...',
+                    containsContext: message.includes('刚才') || message.includes('基于') || message.includes('回应')
+                });
                 
-                // 确保消息内容不为空
+                // 验证生成的消息
                 if (!message || message.trim().length === 0) {
-                    console.warn('[requestRoleSpeak] generated message content is empty');
+                    console.warn('[requestRoleSpeak] Generated message content is empty');
                     throw new Error('生成的消息内容为空');
                 }
+                
+                // 检查消息质量
+                const qualityCheck = analyzeMessageQuality(message, role);
+                console.log('[requestRoleSpeak] Message quality analysis:', qualityCheck);
                 
                 console.log('[requestRoleSpeak] Adding message to display...');
                 addMessage('role', {
@@ -4450,10 +4481,21 @@
                 state.lastSpeaker = role.name;
                 state.lastMessage = message;
                 
-                console.log('[requestRoleSpeak] Role speak completed successfully');
+                console.log('[requestRoleSpeak] ===== Role speak request completed successfully =====');
+                console.log('[requestRoleSpeak] Final state:', {
+                    lastSpeaker: state.lastSpeaker,
+                    messageLength: state.lastMessage?.length || 0,
+                    totalMessages: state.messages?.length || 0
+                });
                 
             } catch (error) {
-                console.error('[requestRoleSpeak] Role speak failed:', error);
+                console.error('[requestRoleSpeak] Error during role speak:', {
+                    error: error.message,
+                    stack: error.stack,
+                    role: role.name,
+                    roleId: role.id
+                });
+                
                 showNotification(`${role.name}发言失败：${error.message}`, 'error');
                 
                 // 添加错误消息到聊天记录以便调试
@@ -4464,28 +4506,334 @@
                 
             } finally {
                 updateRoleWaiting(role, false);
+                console.log('[requestRoleSpeak] Role waiting status updated');
             }
         }
+        
+        // 分析消息质量
+        function analyzeMessageQuality(message, role) {
+            const analysis = {
+                length: message.length,
+                hasContextReference: false,
+                hasInteraction: false,
+                hasRoleConsistency: false,
+                quality: 'unknown'
+            };
+            
+            // 检查是否引用了上下文
+            const contextKeywords = ['刚才', '基于', '回应', '根据', '考虑到', '结合', '针对'];
+            analysis.hasContextReference = contextKeywords.some(keyword => message.includes(keyword));
+            
+            // 检查是否有互动性
+            const interactionKeywords = ['我认为', '我的观点', '建议', '觉得', '应该', '可以'];
+            analysis.hasInteraction = interactionKeywords.some(keyword => message.includes(keyword));
+            
+            // 检查是否符合角色特征
+            if (role.personality) {
+                const personalityKeywords = role.personality.split(/[，。、；；]/).filter(Boolean);
+                analysis.hasRoleConsistency = personalityKeywords.some(keyword => 
+                    keyword && message.includes(keyword.trim())
+                );
+            }
+            
+            // 综合评估质量
+            const score = [
+                analysis.hasContextReference ? 1 : 0,
+                analysis.hasInteraction ? 1 : 0,
+                analysis.hasRoleConsistency ? 1 : 0,
+                message.length >= 50 ? 1 : 0,
+                message.length <= 300 ? 1 : 0
+            ].reduce((sum, val) => sum + val, 0);
+            
+            if (score >= 4) {
+                analysis.quality = 'excellent';
+            } else if (score >= 3) {
+                analysis.quality = 'good';
+            } else if (score >= 2) {
+                analysis.quality = 'fair';
+            } else {
+                analysis.quality = 'poor';
+            }
+            
+            return analysis;
+        }
 
-        // 构建互动Prompt
+        // ========== 上下文收集和处理函数 ==========
+        
+        // 收集工作流上下文信息
+        function collectWorkflowContext() {
+            const context = {
+                workflowName: state.currentWorkflow?.name || '未命名工作流',
+                topic: state.topic || '未设定主题',
+                currentStage: state.currentStage?.name || '讨论中',
+                stageIndex: state.stageIndex || 0,
+                totalStages: state.currentWorkflow?.stages?.length || 0,
+                stageGoal: state.currentStage?.goal || '',
+                workflowGoal: state.currentWorkflow?.description || '',
+                isDecisionStage: state.currentStage?.requiresDecision || false,
+                selectedRoles: state.selectedRoles || [],
+                messagesCount: state.messages?.length || 0
+            };
+            
+            console.log('[collectWorkflowContext] Collected context:', context);
+            return context;
+        }
+        
+        // 构建消息历史（最近N条消息）
+        function buildMessageHistory(maxMessages = 8) {
+            if (!state.messages || state.messages.length === 0) {
+                return {
+                    history: [],
+                    summary: '暂无讨论历史'
+                };
+            }
+            
+            // 过滤出相关的消息（角色消息、用户消息、系统消息）
+            const relevantMessages = state.messages
+                .slice(-maxMessages)
+                .filter(m => m.type === 'role' || m.type === 'user' || (m.type === 'system' && m.content.includes('阶段')))
+                .map(m => {
+                    if (m.type === 'role') {
+                        return {
+                            speaker: m.role?.name || '未知角色',
+                            role: m.role?.title || '',
+                            content: m.content,
+                            timestamp: m.timestamp,
+                            type: 'role'
+                        };
+                    } else if (m.type === 'user') {
+                        return {
+                            speaker: m.sender || '决策者',
+                            role: '决策者',
+                            content: m.content,
+                            timestamp: m.timestamp,
+                            type: 'user'
+                        };
+                    } else if (m.type === 'system') {
+                        return {
+                            speaker: '系统',
+                            role: '系统',
+                            content: m.content,
+                            timestamp: m.timestamp,
+                            type: 'system'
+                        };
+                    }
+                })
+                .filter(Boolean);
+            
+            // 生成历史摘要
+            const summary = generateMessageSummary(relevantMessages);
+            
+            console.log('[buildMessageHistory] Built history:', {
+                messageCount: relevantMessages.length,
+                summary: summary.substring(0, 100) + '...'
+            });
+            
+            return {
+                history: relevantMessages,
+                summary: summary
+            };
+        }
+        
+        // 生成消息历史摘要
+        function generateMessageSummary(messages) {
+            if (!messages || messages.length === 0) {
+                return '暂无讨论记录';
+            }
+            
+            // 提取关键信息点
+            const keyPoints = [];
+            const roleContributions = {};
+            
+            messages.forEach(msg => {
+                if (msg.type === 'role') {
+                    // 记录每个角色的贡献
+                    if (!roleContributions[msg.speaker]) {
+                        roleContributions[msg.speaker] = [];
+                    }
+                    roleContributions[msg.speaker].push(msg.content.substring(0, 100) + '...');
+                } else if (msg.type === 'user') {
+                    keyPoints.push(`决策者: ${msg.content.substring(0, 50)}...`);
+                }
+            });
+            
+            // 构建摘要
+            let summary = '';
+            
+            // 添加角色贡献摘要
+            if (Object.keys(roleContributions).length > 0) {
+                summary += '角色观点摘要：\n';
+                Object.entries(roleContributions).forEach(([role, contributions]) => {
+                    summary += `- ${role}: ${contributions.slice(-2).join('; ')}\n`;
+                });
+            }
+            
+            // 添加关键决策点
+            if (keyPoints.length > 0) {
+                summary += '\n关键决策：\n' + keyPoints.slice(-3).join('\n');
+            }
+            
+            return summary || '讨论正在进行中...';
+        }
+        
+        // 分析讨论状态和趋势
+        function analyzeDiscussionState(messages) {
+            if (!messages || messages.length === 0) {
+                return {
+                    state: 'beginning',
+                    trend: 'starting',
+                    suggestions: ['请开始讨论']
+                };
+            }
+            
+            const recentMessages = messages.slice(-3);
+            const roleMessages = recentMessages.filter(m => m.type === 'role');
+            const userMessages = recentMessages.filter(m => m.type === 'user');
+            
+            // 分析讨论状态
+            let state = 'ongoing';
+            let trend = 'neutral';
+            const suggestions = [];
+            
+            if (roleMessages.length === 0) {
+                state = 'awaiting_roles';
+                suggestions.push('需要AI角色参与讨论');
+            } else if (userMessages.length === 0 && recentMessages.length > 2) {
+                state = 'awaiting_user';
+                suggestions.push('等待决策者回应');
+            } else if (recentMessages.some(m => m.content.includes('?') || m.content.includes('？'))) {
+                trend = 'questioning';
+                suggestions.push('有疑问需要解答');
+            } else if (recentMessages.some(m => m.content.includes('同意') || m.content.includes('支持'))) {
+                trend = 'consensus';
+                suggestions.push('正在形成共识');
+            } else if (recentMessages.some(m => m.content.includes('不同意') || m.content.includes('反对'))) {
+                trend = 'debate';
+                suggestions.push('存在不同观点，需要进一步讨论');
+            }
+            
+            return {
+                state,
+                trend,
+                suggestions
+            };
+        }
+        
+        // 构建互动Prompt（增强版）
         function buildInteractivePrompt(role) {
-            return `你是${role.name}（${role.title}），性格特点：${role.personality}。
+            console.log('[buildInteractivePrompt] Building enhanced prompt for role:', role.name);
+            
+            // 收集完整的上下文信息
+            const workflowContext = collectWorkflowContext();
+            const messageHistory = buildMessageHistory();
+            const discussionState = analyzeDiscussionState(messageHistory.history);
+            
+            // 构建历史消息文本
+            const historyText = messageHistory.history
+                .slice(-5) // 最近5条消息
+                .map(msg => {
+                    const time = new Date(msg.timestamp).toLocaleTimeString('zh-CN', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                    return `[${time}] ${msg.speaker}(${msg.role}): ${msg.content}`;
+                })
+                .join('\n');
+            
+            // 构建最近发言者信息
+            const lastMessage = messageHistory.history.slice(-1)[0];
+            const lastSpeakerInfo = lastMessage ? 
+                `${lastMessage.speaker}刚才说："${lastMessage.content}"` : 
+                '讨论刚开始';
+            
+            // 构建角色互动指导
+            const interactionGuidance = buildInteractionGuidance(role, messageHistory, discussionState);
+            
+            // 构建完整的Prompt
+            const prompt = `你是${role.name}（${role.title}），性格特点：${role.personality}。
 
-${state.lastSpeaker ? `${state.lastSpeaker}刚才说："${state.lastMessage}"` : ''}
+## 工作流背景
+工作流名称：${workflowContext.workflowName}
+讨论主题：${workflowContext.topic}
+当前阶段：${workflowContext.currentStage}（第${workflowContext.stageIndex + 1}/${workflowContext.totalStages}阶段）
+${workflowContext.stageGoal ? `阶段目标：${workflowContext.stageGoal}` : ''}
+${workflowContext.isDecisionStage ? '⚠️ 这是决策阶段，需要给出明确的建议或意见' : ''}
 
-身份特征：
-• 说话风格符合身份
-• 使用专业术语
-• 体现行业经验
-• 保持角色一致性
+## 讨论历史摘要
+${messageHistory.summary}
 
-当前讨论：${state.topic}
-当前阶段：${state.currentStage?.name || '讨论中'}
+## 最近对话
+${historyText}
 
-你的观点：
-${role.personality}
+## 当前情况
+${lastSpeakerInfo}
 
-请${state.lastSpeaker ? `直接回应${state.lastSpeaker}的观点` : '发表你的专业见解'}，进行有意义的互动。`;
+## 讨论状态分析
+当前状态：${discussionState.state}
+发展趋势：${discussionState.trend}
+建议关注：${discussionState.suggestions.join('、')}
+
+## 角色互动指导
+${interactionGuidance}
+
+## 回应要求
+1. 基于以上完整上下文进行回应
+2. ${lastMessage.speaker !== role.name ? `直接回应${lastMessage.speaker}的观点` : '深入阐述你的观点'}
+3. 保持${role.name}的角色特征和专业立场
+4. 确保回应逻辑连贯，与前面的讨论形成有效互动
+5. ${workflowContext.isDecisionStage ? '给出明确的决策建议' : '推动讨论向建设性方向发展'}
+6. 回应长度控制在150-200字，确保内容精炼有力
+
+请基于完整的上下文信息，以${role.name}的身份进行回应：`;
+
+            console.log('[buildInteractivePrompt] Generated enhanced prompt:', {
+                role: role.name,
+                contextLines: prompt.split('\n').length,
+                historyCount: messageHistory.history.length,
+                hasWorkflowContext: !!workflowContext.workflowName
+            });
+            
+            return prompt;
+        }
+        
+        // 构建角色互动指导
+        function buildInteractionGuidance(role, messageHistory, discussionState) {
+            const guidance = [];
+            
+            // 基于角色的指导
+            if (role.id === 'facilitator') {
+                guidance.push('作为主持人，引导讨论方向，确保讨论有序进行');
+                guidance.push('适时总结观点，推动达成共识');
+            } else if (role.id === 'editor') {
+                guidance.push('作为编辑员，关注内容的完整性和逻辑性');
+                guidance.push('准备总结讨论要点，形成执行方案');
+            } else {
+                guidance.push(`作为${role.title}，从专业角度提供见解`);
+                guidance.push('结合你的经验，给出建设性意见');
+            }
+            
+            // 基于讨论状态的指导
+            if (discussionState.trend === 'questioning') {
+                guidance.push('积极回答问题，消除疑虑');
+            } else if (discussionState.trend === 'debate') {
+                guidance.push('理性分析不同观点，寻求折中方案');
+            } else if (discussionState.trend === 'consensus') {
+                guidance.push('在共识基础上补充细节，完善方案');
+            }
+            
+            // 基于历史消息的指导
+            const recentRoles = messageHistory.history
+                .slice(-3)
+                .filter(m => m.type === 'role')
+                .map(m => m.speaker);
+            
+            if (recentRoles.includes(role.name)) {
+                guidance.push('你刚才已经发言过，现在可以补充新观点或回应他人');
+            } else {
+                guidance.push('这是你在这个阶段的首次发言，请给出你的核心观点');
+            }
+            
+            return guidance.map((g, i) => `${i + 1}. ${g}`).join('\n');
         }
 
         async function startWorkflow() {
@@ -4673,61 +5021,162 @@ ${role.personality}
         }
 
         async function facilitatorSpeak(stage) {
+            console.log('[facilitatorSpeak] ===== Starting enhanced facilitator speech =====');
+            console.log('[facilitatorSpeak] Stage:', stage.name);
+            
             const allRoles = [...presetRoles, ...state.customRoles];
             const facilitator = allRoles.find(r => r.id === 'facilitator');
-            if (!facilitator) return;
-            
-            let prompt = getStagePrompt(stage, facilitator);
-            if (!prompt) {
-                prompt = buildFacilitatorPrompt(stage);
+            if (!facilitator) {
+                console.error('[facilitatorSpeak] Facilitator role not found');
+                return;
             }
             
-            const message = await generateRoleMessage(facilitator, prompt);
+            console.log('[facilitatorSpeak] Using facilitator:', facilitator.name);
             
-            addMessage('role', {
-                role: facilitator,
-                content: message
-            });
-            
-            // 更新最后消息状态
-            state.lastSpeaker = facilitator.name;
-            state.lastMessage = message;
+            try {
+                // 优先使用自定义Prompt，如果没有则使用增强的上下文Prompt
+                let prompt = getStagePrompt(stage, facilitator);
+                if (!prompt) {
+                    console.log('[facilitatorSpeak] Using enhanced interactive prompt for facilitator');
+                    prompt = buildInteractivePrompt(facilitator);
+                } else {
+                    console.log('[facilitatorSpeak] Using custom stage prompt for facilitator');
+                }
+                
+                console.log('[facilitatorSpeak] Generated prompt for facilitator:', {
+                    promptLength: prompt.length,
+                    hasContext: prompt.includes('工作流背景') || prompt.includes('讨论历史'),
+                    preview: prompt.substring(0, 200) + '...'
+                });
+                
+                const message = await generateRoleMessage(facilitator, prompt);
+                
+                console.log('[facilitatorSpeak] Generated facilitator message:', {
+                    length: message.length,
+                    preview: message.substring(0, 150) + '...',
+                    containsContextReference: message.includes('刚才') || message.includes('基于') || message.includes('阶段')
+                });
+                
+                // 验证消息质量
+                const qualityCheck = analyzeMessageQuality(message, facilitator);
+                console.log('[facilitatorSpeak] Facilitator message quality:', qualityCheck);
+                
+                addMessage('role', {
+                    role: facilitator,
+                    content: message
+                });
+                
+                // 更新最后消息状态
+                state.lastSpeaker = facilitator.name;
+                state.lastMessage = message;
+                
+                console.log('[facilitatorSpeak] ===== Facilitator speech completed successfully =====');
+                
+            } catch (error) {
+                console.error('[facilitatorSpeak] Error in facilitator speech:', {
+                    error: error.message,
+                    stage: stage.name
+                });
+                
+                // 添加错误消息
+                addMessage('system', {
+                    type: 'custom',
+                    content: `⚠️ 主持人在"${stage.name}"阶段发言失败: ${error.message}`
+                });
+            }
         }
 
         async function editorSpeak(stage) {
+            console.log('[editorSpeak] ===== Starting enhanced editor speech =====');
+            console.log('[editorSpeak] Stage:', stage.name);
+            
             const allRoles = [...presetRoles, ...state.customRoles];
             const editor = allRoles.find(r => r.id === 'editor');
-            if (!editor) return;
-            
-            updateRoleWaiting(editor, true);
-            
-            // 生成执行方案
-            let prompt = getStagePrompt(stage, editor);
-            if (!prompt) {
-                prompt = buildExecutionPlanPrompt();
+            if (!editor) {
+                console.error('[editorSpeak] Editor role not found');
+                return;
             }
             
-            const message = await generateRoleMessage(editor, prompt);
+            console.log('[editorSpeak] Using editor:', editor.name);
+            updateRoleWaiting(editor, true);
             
-            // 保存Markdown内容
-            state.currentMarkdownContent = message;
-            state.executionPlanGenerated = true;
-            
-            addMessage('role', {
-                role: editor,
-                content: message,
-                isMarkdown: true
-            });
-            
-            updateRoleWaiting(editor, false);
-            
-            // 更新最后消息状态
-            state.lastSpeaker = editor.name;
-            state.lastMessage = message;
+            try {
+                // 生成执行方案
+                let prompt = getStagePrompt(stage, editor);
+                if (!prompt) {
+                    console.log('[editorSpeak] Using enhanced execution plan prompt with full context');
+                    prompt = buildExecutionPlanPrompt();
+                } else {
+                    console.log('[editorSpeak] Using custom stage prompt for editor');
+                }
+                
+                console.log('[editorSpeak] Generated prompt for editor:', {
+                    promptLength: prompt.length,
+                    hasContext: prompt.includes('工作流背景') || prompt.includes('讨论历史'),
+                    preview: prompt.substring(0, 300) + '...'
+                });
+                
+                const message = await generateRoleMessage(editor, prompt);
+                
+                console.log('[editorSpeak] Generated editor message:', {
+                    length: message.length,
+                    preview: message.substring(0, 200) + '...',
+                    containsMarkdown: message.includes('#') || message.includes('##') || message.includes('###')
+                });
+                
+                // 验证消息质量
+                const qualityCheck = analyzeMessageQuality(message, editor);
+                console.log('[editorSpeak] Editor message quality:', qualityCheck);
+                
+                // 保存Markdown内容
+                state.currentMarkdownContent = message;
+                state.executionPlanGenerated = true;
+                
+                addMessage('role', {
+                    role: editor,
+                    content: message,
+                    isMarkdown: true
+                });
+                
+                updateRoleWaiting(editor, false);
+                
+                // 更新最后消息状态
+                state.lastSpeaker = editor.name;
+                state.lastMessage = message;
+                
+                console.log('[editorSpeak] ===== Editor speech completed successfully =====');
+                console.log('[editorSpeak] Generated execution plan:', {
+                    contentLength: message.length,
+                    hasMarkdown: true,
+                    savedToState: true
+                });
+                
+            } catch (error) {
+                console.error('[editorSpeak] Error in editor speech:', {
+                    error: error.message,
+                    stage: stage.name
+                });
+                
+                updateRoleWaiting(editor, false);
+                
+                // 添加错误消息
+                addMessage('system', {
+                    type: 'custom',
+                    content: `⚠️ 编辑员在"${stage.name}"阶段生成执行方案失败: ${error.message}`
+                });
+            }
         }
 
-        // 改进角色讨论，加入上下文互动
+        // 改进角色讨论，加入上下文互动（增强版）
         async function roleDiscussion(stage) {
+            console.log('[roleDiscussion] ===== Starting enhanced role discussion =====');
+            console.log('[roleDiscussion] Stage:', stage.name);
+            console.log('[roleDiscussion] Current context:', {
+                messagesCount: state.messages?.length || 0,
+                lastSpeaker: state.lastSpeaker,
+                topic: state.topic
+            });
+            
             const allRoles = [...presetRoles, ...state.customRoles];
             const activeRoles = allRoles.filter(r => 
                 state.selectedRoles.includes(r.id) && 
@@ -4735,31 +5184,91 @@ ${role.personality}
                 r.id !== 'editor'
             );
             
+            console.log('[roleDiscussion] Available active roles:', 
+                activeRoles.map(r => ({ id: r.id, name: r.name }))
+            );
+            
+            if (activeRoles.length === 0) {
+                console.warn('[roleDiscussion] No active roles available for discussion');
+                return;
+            }
+            
             // 随机选择一个角色开始讨论
             const randomRole = activeRoles[Math.floor(Math.random() * activeRoles.length)];
             
             if (randomRole) {
-                updateRoleWaiting(randomRole, true);
-                
-                let prompt = getStagePrompt(stage, randomRole);
-                if (!prompt) {
-                    prompt = buildInteractivePrompt(randomRole);
-                }
-                
-                const message = await generateRoleMessage(randomRole, prompt);
-                
-                addMessage('role', {
-                    role: randomRole,
-                    content: message
+                console.log('[roleDiscussion] Selected role for discussion:', {
+                    id: randomRole.id,
+                    name: randomRole.name,
+                    title: randomRole.title
                 });
                 
-                updateRoleWaiting(randomRole, false);
+                updateRoleWaiting(randomRole, true);
                 
-                // 更新最后消息状态，为下一个角色互动做准备
-                state.lastSpeaker = randomRole.name;
-                state.lastMessage = message;
-                
-                await sleep(1500);
+                try {
+                    // 优先使用自定义Prompt，如果没有则使用增强的上下文Prompt
+                    let prompt = getStagePrompt(stage, randomRole);
+                    if (!prompt) {
+                        console.log('[roleDiscussion] Using enhanced interactive prompt with full context');
+                        prompt = buildInteractivePrompt(randomRole);
+                    } else {
+                        console.log('[roleDiscussion] Using custom stage prompt');
+                    }
+                    
+                    console.log('[roleDiscussion] Generated prompt for discussion:', {
+                        promptLength: prompt.length,
+                        hasContext: prompt.includes('工作流背景') || prompt.includes('讨论历史'),
+                        preview: prompt.substring(0, 200) + '...'
+                    });
+                    
+                    const message = await generateRoleMessage(randomRole, prompt);
+                    
+                    console.log('[roleDiscussion] Generated discussion message:', {
+                        length: message.length,
+                        preview: message.substring(0, 150) + '...',
+                        containsContextReference: message.includes('刚才') || message.includes('基于') || message.includes('回应')
+                    });
+                    
+                    // 验证消息质量
+                    const qualityCheck = analyzeMessageQuality(message, randomRole);
+                    console.log('[roleDiscussion] Discussion message quality:', qualityCheck);
+                    
+                    addMessage('role', {
+                        role: randomRole,
+                        content: message
+                    });
+                    
+                    updateRoleWaiting(randomRole, false);
+                    
+                    // 更新最后消息状态，为下一个角色互动做准备
+                    state.lastSpeaker = randomRole.name;
+                    state.lastMessage = message;
+                    
+                    console.log('[roleDiscussion] ===== Role discussion completed successfully =====');
+                    console.log('[roleDiscussion] Updated state:', {
+                        lastSpeaker: state.lastSpeaker,
+                        messageLength: state.lastMessage?.length || 0
+                    });
+                    
+                    await sleep(1500);
+                    
+                } catch (error) {
+                    console.error('[roleDiscussion] Error in role discussion:', {
+                        error: error.message,
+                        role: randomRole.name,
+                        stage: stage.name
+                    });
+                    
+                    updateRoleWaiting(randomRole, false);
+                    
+                    // 添加错误消息
+                    addMessage('system', {
+                        type: 'custom',
+                        content: `⚠️ ${randomRole.name}在"${stage.name}"阶段讨论失败: ${error.message}`
+                    });
+                }
+            } else {
+                console.warn('[roleDiscussion] Failed to select random role from active roles');
             }
         }
 
@@ -4797,56 +5306,210 @@ ${role.personality}
 请用简洁、专业的语言进行开场白，字数控制在150字以内。`;
         }
 
-        // 构建执行方案Prompt
+        // 构建执行方案Prompt（增强版）
         function buildExecutionPlanPrompt() {
-            const context = state.messages
-                .slice(-10)
-                .filter(m => m.role || m.sender === '决策者')
+            console.log('[buildExecutionPlanPrompt] Building enhanced execution plan prompt');
+            
+            // 收集完整的上下文信息
+            const workflowContext = collectWorkflowContext();
+            const messageHistory = buildMessageHistory(15); // 编辑员需要更多上下文
+            
+            // 构建详细的讨论历史
+            const detailedContext = state.messages
+                .slice(-15)
+                .filter(m => m.role || m.sender === '决策者' || (m.type === 'system' && m.content.includes('阶段')))
                 .map(m => {
-                    if (m.role) return `${m.role.name}: ${m.content}`;
-                    if (m.sender) return `${m.sender}: ${m.content}`;
+                    const time = new Date(m.timestamp).toLocaleTimeString('zh-CN', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                    
+                    if (m.type === 'role') {
+                        return `[${time}] ${m.role.name}(${m.role.title}): ${m.content}`;
+                    } else if (m.type === 'user') {
+                        return `[${time}] ${m.sender || '决策者'}: ${m.content}`;
+                    } else if (m.type === 'system') {
+                        return `[${time}] 系统: ${m.content}`;
+                    }
                     return '';
                 })
                 .filter(Boolean)
                 .join('\n');
             
-            return `你是专业的执行方案编辑员，请基于工作流"${state.topic}"的讨论结果，生成一份完整的执行方案文档。
+            // 生成讨论摘要
+            const discussionSummary = generateDiscussionSummary(messageHistory.history);
+            
+            // 提取关键决策点
+            const keyDecisions = extractKeyDecisions(messageHistory.history);
+            
+            const prompt = `你是专业的执行方案编辑员，请基于完整的工作流讨论结果，生成一份专业、可执行的执行方案文档。
 
-## 工作主题：${state.topic}
+## 工作流背景
+工作流名称：${workflowContext.workflowName}
+工作主题：${workflowContext.topic}
+当前阶段：${workflowContext.currentStage}（最终阶段）
+总阶段数：${workflowContext.totalStages}
 
-## 执行方案
+## 讨论历史摘要
+${discussionSummary}
+
+## 关键决策点
+${keyDecisions}
+
+## 详细讨论记录
+${detailedContext}
+
+## 执行方案要求
 
 ### 一、项目概述
-请简要描述项目背景、目标和核心价值
+基于工作流主题和讨论背景，简要描述：
+- 项目背景和起因
+- 核心目标和价值主张
+- 主要挑战和机遇
 
-### 二、关键决策
-基于讨论内容，总结主要决策和理由
+### 二、关键决策总结
+基于讨论中的关键决策点，总结：
+- 主要达成的共识
+- 重要决策的理由和依据
+- 不同观点的整合结果
 
 ### 三、实施计划
-详细说明实施步骤、时间节点和责任人
+制定详细的实施路线图：
+- 分阶段实施步骤
+- 每个阶段的具体任务
+- 时间节点和里程碑
+- 责任人和协作方式
 
-### 四、资源配置
-列出所需的人力、物力、技术资源
+### 四、资源配置规划
+详细列出所需资源：
+- 人力资源配置
+- 技术、设备和工具需求
+- 预算和成本估算
+- 外部资源需求
 
-### 五、风险管控
-识别潜在风险和应对措施
+### 五、风险管控策略
+识别和应对潜在风险：
+- 技术风险和应对措施
+- 管理风险和预防方案
+- 市场风险和应急预案
+- 质量控制措施
 
-### 六、成功指标
-定义可衡量的成功标准和KPI
+### 六、成功指标体系
+建立可衡量的评估标准：
+- 关键绩效指标(KPI)
+- 阶段性评估节点
+- 质量验收标准
+- 长期效益指标
 
-### 七、下一步行动
-明确立即执行的具体任务
+### 七、下一步行动计划
+明确立即执行的具体任务：
+- 优先级排序的任务清单
+- 具体执行步骤
+- 时间要求
+- 负责人分配
 
-要求：
-1. 使用标准Markdown格式
-2. 结构清晰，逻辑严谨
-3. 内容具体，可操作性强
-4. 字数控制在800-1200字
+## 文档要求
+1. 使用标准Markdown格式，结构清晰
+2. 内容逻辑严谨，层次分明
+3. 方案具体可操作，避免空泛
+4. 字数控制在1000-1500字
+5. 体现专业性和实用性
+6. 确保所有建议都基于前面的讨论结果
 
-上下文：
-${context}
+请基于以上完整的上下文信息，生成专业的执行方案文档。`;
 
-请生成专业的执行方案文档。`;
+            console.log('[buildExecutionPlanPrompt] Enhanced prompt generated:', {
+                promptLength: prompt.length,
+                contextLines: detailedContext.split('\n').length,
+                hasWorkflowContext: !!workflowContext.workflowName,
+                hasDiscussionSummary: discussionSummary.length > 0
+            });
+            
+            return prompt;
+        }
+        
+        // 生成讨论摘要
+        function generateDiscussionSummary(messages) {
+            if (!messages || messages.length === 0) {
+                return '暂无讨论记录';
+            }
+            
+            const roleContributions = {};
+            const keyTopics = [];
+            const decisions = [];
+            
+            messages.forEach(msg => {
+                if (msg.type === 'role') {
+                    // 记录角色贡献
+                    if (!roleContributions[msg.speaker]) {
+                        roleContributions[msg.speaker] = [];
+                    }
+                    roleContributions[msg.speaker].push(msg.content);
+                    
+                    // 提取关键主题
+                    if (msg.content.includes('建议') || msg.content.includes('认为')) {
+                        keyTopics.push(`${msg.speaker}: ${msg.content.substring(0, 80)}...`);
+                    }
+                } else if (msg.type === 'user') {
+                    // 用户决策
+                    if (msg.content.includes('同意') || msg.content.includes('批准') || msg.content.includes('决定')) {
+                        decisions.push(`决策者: ${msg.content}`);
+                    }
+                }
+            });
+            
+            let summary = '';
+            
+            // 角色贡献
+            if (Object.keys(roleContributions).length > 0) {
+                summary += '**角色观点总结：**\n';
+                Object.entries(roleContributions).forEach(([role, contributions]) => {
+                    const mainPoints = contributions.slice(-2).map(c => c.substring(0, 100) + '...');
+                    summary += `- ${role}: ${mainPoints.join('; ')}\n`;
+                });
+            }
+            
+            // 关键主题
+            if (keyTopics.length > 0) {
+                summary += '\n**主要讨论点：**\n' + keyTopics.slice(-3).join('\n');
+            }
+            
+            // 决策结果
+            if (decisions.length > 0) {
+                summary += '\n**重要决策：**\n' + decisions.slice(-2).join('\n');
+            }
+            
+            return summary || '讨论正在进行中...';
+        }
+        
+        // 提取关键决策点
+        function extractKeyDecisions(messages) {
+            if (!messages || messages.length === 0) {
+                return '暂无决策记录';
+            }
+            
+            const decisions = [];
+            
+            messages.forEach(msg => {
+                const content = msg.content;
+                
+                // 识别决策关键词
+                if (content.includes('决定') || content.includes('同意') || 
+                    content.includes('批准') || content.includes('确认') ||
+                    content.includes('选择') || content.includes('采用')) {
+                    
+                    decisions.push(`- ${msg.speaker}: ${content.substring(0, 100)}...`);
+                }
+                
+                // 识别建议性内容
+                if (content.includes('建议') || content.includes('应该') || 
+                    content.includes('需要') || content.includes('必须')) {
+                    
+                    decisions.push(`- ${msg.speaker}建议: ${content.substring(0, 80)}...`);
+                }
+            });
+            
+            return decisions.length > 0 ? decisions.slice(-5).join('\n') : '暂无明确决策点';
         }
 
         // 生成角色消息（支持自定义API）
@@ -7060,6 +7723,118 @@ ${state.messages.slice(-5).map(m =>
                     } catch (error) {
                         return { valid: false, error: error.message };
                     }
+                },
+                // 新增：上下文调试工具
+                debugContext: () => {
+                    console.log('===== 上下文调试信息 =====');
+                    
+                    // 工作流上下文
+                    const workflowContext = collectWorkflowContext();
+                    console.log('工作流上下文:', workflowContext);
+                    
+                    // 消息历史
+                    const messageHistory = buildMessageHistory();
+                    console.log('消息历史:', {
+                        totalCount: messageHistory.history.length,
+                        summary: messageHistory.summary,
+                        recentMessages: messageHistory.history.slice(-3)
+                    });
+                    
+                    // 讨论状态
+                    const discussionState = analyzeDiscussionState(messageHistory.history);
+                    console.log('讨论状态:', discussionState);
+                    
+                    // 角色信息
+                    const allRoles = [...presetRoles, ...state.customRoles];
+                    const selectedRoles = allRoles.filter(r => state.selectedRoles.includes(r.id));
+                    console.log('选中角色:', selectedRoles.map(r => ({ id: r.id, name: r.name })));
+                    
+                    // 最后消息
+                    console.log('最后消息:', {
+                        lastSpeaker: state.lastSpeaker,
+                        lastMessage: state.lastMessage?.substring(0, 100) + '...',
+                        totalMessages: state.messages?.length || 0
+                    });
+                    
+                    return {
+                        workflowContext,
+                        messageHistory,
+                        discussionState,
+                        selectedRoles,
+                        lastSpeaker: state.lastSpeaker,
+                        lastMessage: state.lastMessage
+                    };
+                },
+                // 测试角色Prompt生成
+                testPrompt: (roleId) => {
+                    const allRoles = [...presetRoles, ...state.customRoles];
+                    const role = allRoles.find(r => r.id === roleId);
+                    
+                    if (!role) {
+                        console.error(`角色 ${roleId} 不存在`);
+                        return null;
+                    }
+                    
+                    console.log(`===== 测试 ${role.name} 的Prompt生成 =====`);
+                    
+                    const prompt = buildInteractivePrompt(role);
+                    console.log('生成的Prompt长度:', prompt.length);
+                    console.log('Prompt预览:', prompt.substring(0, 500) + '...');
+                    console.log('包含上下文信息:', {
+                        hasWorkflowContext: prompt.includes('工作流背景'),
+                        hasMessageHistory: prompt.includes('讨论历史'),
+                        hasLastSpeaker: prompt.includes('刚才说'),
+                        hasGuidance: prompt.includes('角色互动指导')
+                    });
+                    
+                    return prompt;
+                },
+                // 分析消息质量
+                analyzeMessage: (messageText, roleId) => {
+                    const allRoles = [...presetRoles, ...state.customRoles];
+                    const role = allRoles.find(r => r.id === roleId);
+                    
+                    if (!role) {
+                        console.error(`角色 ${roleId} 不存在`);
+                        return null;
+                    }
+                    
+                    const quality = analyzeMessageQuality(messageText, role);
+                    console.log(`消息质量分析 (${role.name}):`, quality);
+                    
+                    return quality;
+                },
+                // 模拟上下文收集
+                simulateContext: () => {
+                    console.log('===== 模拟上下文收集测试 =====');
+                    
+                    // 测试工作流上下文收集
+                    const testWorkflowContext = collectWorkflowContext();
+                    console.log('✅ 工作流上下文收集测试通过');
+                    
+                    // 测试消息历史构建
+                    const testMessageHistory = buildMessageHistory();
+                    console.log('✅ 消息历史构建测试通过');
+                    
+                    // 测试讨论状态分析
+                    const testDiscussionState = analyzeDiscussionState(testMessageHistory.history);
+                    console.log('✅ 讨论状态分析测试通过');
+                    
+                    // 测试摘要生成
+                    const testSummary = generateDiscussionSummary(testMessageHistory.history);
+                    console.log('✅ 讨论摘要生成测试通过');
+                    
+                    // 测试决策提取
+                    const testDecisions = extractKeyDecisions(testMessageHistory.history);
+                    console.log('✅ 关键决策提取测试通过');
+                    
+                    return {
+                        workflowContext: testWorkflowContext,
+                        messageHistory: testMessageHistory,
+                        discussionState: testDiscussionState,
+                        summary: testSummary,
+                        decisions: testDecisions
+                    };
                 }
             };
         }
@@ -7067,6 +7842,10 @@ ${state.messages.slice(-5).map(m =>
         console.log('✅ AI工作流工作室 v2.2 简化版已加载');
         console.log('🔧 简化功能：自定义API只需API KEY + 自动获取模型');
         console.log('🚀 保留功能：所有原有功能完整保留');
+        console.log('🎯 新增功能：角色上下文连贯性增强');
+        console.log('📝 调试工具：使用 window.debugWorkflow.debugContext() 查看上下文信息');
+        console.log('🧪 测试工具：使用 window.debugWorkflow.testPrompt("roleId") 测试Prompt生成');
+        console.log('📊 质量分析：使用 window.debugWorkflow.analyzeMessage(message, "roleId") 分析消息质量');
     </script>
 </body>
 </html>
