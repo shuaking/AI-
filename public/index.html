@@ -4472,10 +4472,19 @@
                 console.log('[requestRoleSpeak] Message quality analysis:', qualityCheck);
                 
                 console.log('[requestRoleSpeak] Adding message to display...');
-                addMessage('role', {
-                    role: role,
-                    content: message
-                });
+                
+                // 检查是否为流式模式，避免重复添加消息
+                if (state.outputMode === 'stream') {
+                    console.log('[requestRoleSpeak] Stream mode detected, message already added by streaming process');
+                    // 流式模式下，消息已经通过 createStreamingMessage 和 finalizeStreamingMessage 处理
+                    // 只需要更新状态，不需要再次添加消息
+                } else {
+                    // 批量模式下才调用 addMessage
+                    addMessage('role', {
+                        role: role,
+                        content: message
+                    });
+                }
                 
                 // 更新状态
                 state.lastSpeaker = role.name;
@@ -5061,10 +5070,18 @@ ${interactionGuidance}
                 const qualityCheck = analyzeMessageQuality(message, facilitator);
                 console.log('[facilitatorSpeak] Facilitator message quality:', qualityCheck);
                 
-                addMessage('role', {
-                    role: facilitator,
-                    content: message
-                });
+                // 检查是否为流式模式，避免重复添加消息
+                if (state.outputMode === 'stream') {
+                    console.log('[facilitatorSpeak] Stream mode detected, message already added by streaming process');
+                    // 流式模式下，消息已经通过 createStreamingMessage 和 finalizeStreamingMessage 处理
+                    // 只需要更新状态，不需要再次添加消息
+                } else {
+                    // 批量模式下才调用 addMessage
+                    addMessage('role', {
+                        role: facilitator,
+                        content: message
+                    });
+                }
                 
                 // 更新最后消息状态
                 state.lastSpeaker = facilitator.name;
@@ -5132,11 +5149,19 @@ ${interactionGuidance}
                 state.currentMarkdownContent = message;
                 state.executionPlanGenerated = true;
                 
-                addMessage('role', {
-                    role: editor,
-                    content: message,
-                    isMarkdown: true
-                });
+                // 检查是否为流式模式，避免重复添加消息
+                if (state.outputMode === 'stream') {
+                    console.log('[editorSpeak] Stream mode detected, message already added by streaming process');
+                    // 流式模式下，消息已经通过 createStreamingMessage 和 finalizeStreamingMessage 处理
+                    // 只需要更新状态，不需要再次添加消息
+                } else {
+                    // 批量模式下才调用 addMessage
+                    addMessage('role', {
+                        role: editor,
+                        content: message,
+                        isMarkdown: true
+                    });
+                }
                 
                 updateRoleWaiting(editor, false);
                 
@@ -5233,10 +5258,18 @@ ${interactionGuidance}
                     const qualityCheck = analyzeMessageQuality(message, randomRole);
                     console.log('[roleDiscussion] Discussion message quality:', qualityCheck);
                     
-                    addMessage('role', {
-                        role: randomRole,
-                        content: message
-                    });
+                    // 检查是否为流式模式，避免重复添加消息
+                    if (state.outputMode === 'stream') {
+                        console.log('[roleDiscussion] Stream mode detected, message already added by streaming process');
+                        // 流式模式下，消息已经通过 createStreamingMessage 和 finalizeStreamingMessage 处理
+                        // 只需要更新状态，不需要再次添加消息
+                    } else {
+                        // 批量模式下才调用 addMessage
+                        addMessage('role', {
+                            role: randomRole,
+                            content: message
+                        });
+                    }
                     
                     updateRoleWaiting(randomRole, false);
                     
