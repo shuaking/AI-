@@ -3281,6 +3281,17 @@
                 state.globalVariables = JSON.parse(savedVariables);
             }
 
+            // 加载选中的角色
+            const savedSelectedRoles = localStorage.getItem('selectedRoles');
+            if (savedSelectedRoles) {
+                try {
+                    state.selectedRoles = JSON.parse(savedSelectedRoles);
+                } catch (e) {
+                    console.error('[loadSavedConfig] Failed to parse savedSelectedRoles:', e);
+                    // 保持默认值
+                }
+            }
+
             // 加载自定义工作流
             const savedWorkflow = localStorage.getItem('customWorkflow');
             if (savedWorkflow) {
@@ -4112,6 +4123,9 @@
                 state.selectedRoles.push(roleId);
             }
             
+            // 保存选中的角色到localStorage
+            localStorage.setItem('selectedRoles', JSON.stringify(state.selectedRoles));
+            
             renderRoleChips();
             updateRoleStatus();
             renderRoleSelector();
@@ -4191,6 +4205,8 @@
                 const selectedIndex = state.selectedRoles.indexOf(roleId);
                 if (selectedIndex > -1) {
                     state.selectedRoles.splice(selectedIndex, 1);
+                    // 保存更新后的选中角色列表
+                    localStorage.setItem('selectedRoles', JSON.stringify(state.selectedRoles));
                 }
                 
                 updateRoleStatus();

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色选择功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .role-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .role-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .role-chip:hover {
+            background: #e0f0ff;
+            border-color: #00d4ff;
+            transform: scale(1.05);
+        }
+        .role-chip.selected {
+            background: #7b2ff7;
+            border-color: #7b2ff7;
+            color: white;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+        button {
+            padding: 8px 16px;
+            background: #00d4ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #00b8e6;
+        }
+    </style>
+</head>
+<body>
+    <h1>角色选择功能测试</h1>
+    
+    <div class="test-section">
+        <h2>角色选择测试</h2>
+        <label class="form-label">选择参与角色</label>
+        <div class="role-chips" id="roleChips"></div>
+        <div class="status" id="status"></div>
+        <div style="margin-top: 15px;">
+            <button onclick="clearSelection()">清除选择</button>
+            <button onclick="selectAll()">全选</button>
+            <button onclick="testPersistence()">测试持久化</button>
+        </div>
+    </div>
+
+    <script>
+        // 模拟预设角色
+        const presetRoles = [
+            { id: 'facilitator', name: '主持人', emoji: '🎯', color: '#00d4ff', required: true },
+            { id: 'pm', name: '项目经理', emoji: '📋', color: '#4ade80', required: true },
+            { id: 'tech', name: '技术专家', emoji: '💻', color: '#f59e0b', required: true },
+            { id: 'design', name: '设计师', emoji: '🎨', color: '#ec4899', required: true },
+            { id: 'editor', name: '编辑员', emoji: '📝', color: '#8b5cf6', required: true },
+            { id: 'analyst', name: '分析师', emoji: '📊', color: '#06b6d4', required: false },
+            { id: 'user', name: '用户代表', emoji: '👤', color: '#10b981', required: false }
+        ];
+
+        // 状态管理
+        let state = {
+            selectedRoles: ['facilitator', 'pm', 'tech', 'design', 'editor'] // 默认选择
+        };
+
+        // 初始化
+        function init() {
+            loadSavedSelection();
+            renderRoleChips();
+            updateStatus();
+        }
+
+        // 加载保存的选择
+        function loadSavedSelection() {
+            const savedSelectedRoles = localStorage.getItem('selectedRoles');
+            if (savedSelectedRoles) {
+                try {
+                    state.selectedRoles = JSON.parse(savedSelectedRoles);
+                    console.log('[loadSavedSelection] Loaded from localStorage:', state.selectedRoles);
+                } catch (e) {
+                    console.error('[loadSavedSelection] Failed to parse savedSelectedRoles:', e);
+                }
+            }
+        }
+
+        // 渲染角色选择器
+        function renderRoleChips() {
+            const container = document.getElementById('roleChips');
+            
+            container.innerHTML = presetRoles.map(role => `
+                <div class="role-chip ${state.selectedRoles.includes(role.id) ? 'selected' : ''}" 
+                     data-role="${role.id}" onclick="toggleRole('${role.id}')">
+                    <span class="emoji">${role.emoji}</span>
+                    <span>${role.name}</span>
+                    ${role.required ? '<span style="color: #ff6b6b;">*</span>' : ''}
+                </div>
+            `).join('');
+        }
+
+        // 切换角色选择
+        function toggleRole(roleId) {
+            const role = presetRoles.find(r => r.id === roleId);
+            
+            if (role.required && state.selectedRoles.includes(roleId)) {
+                alert(`${role.name}是必需角色，不能取消`);
+                return;
+            }
+            
+            const index = state.selectedRoles.indexOf(roleId);
+            if (index > -1) {
+                state.selectedRoles.splice(index, 1);
+                console.log(`[toggleRole] Removed role: ${role.name}`);
+            } else {
+                state.selectedRoles.push(roleId);
+                console.log(`[toggleRole] Added role: ${role.name}`);
+            }
+            
+            // 保存到localStorage
+            localStorage.setItem('selectedRoles', JSON.stringify(state.selectedRoles));
+            console.log(`[toggleRole] Saved to localStorage:`, state.selectedRoles);
+            
+            renderRoleChips();
+            updateStatus();
+        }
+
+        // 更新状态显示
+        function updateStatus() {
+            const statusEl = document.getElementById('status');
+            const selectedRoles = presetRoles.filter(r => state.selectedRoles.includes(r.id));
+            
+            statusEl.innerHTML = `
+                <strong>当前选择状态：</strong><br>
+                选中角色数量: ${state.selectedRoles.length}<br>
+                选中角色: ${selectedRoles.map(r => r.emoji + r.name).join(', ')}<br>
+                localStorage: ${localStorage.getItem('selectedRoles') || 'null'}<br>
+                <br>
+                <strong>详细状态：</strong><br>
+                ${JSON.stringify(state.selectedRoles, null, 2)}
+            `;
+        }
+
+        // 清除选择
+        function clearSelection() {
+            // 保留必需角色
+            state.selectedRoles = presetRoles.filter(r => r.required).map(r => r.id);
+            localStorage.setItem('selectedRoles', JSON.stringify(state.selectedRoles));
+            renderRoleChips();
+            updateStatus();
+            console.log('[clearSelection] Cleared selection, kept required roles');
+        }
+
+        // 全选
+        function selectAll() {
+            state.selectedRoles = presetRoles.map(r => r.id);
+            localStorage.setItem('selectedRoles', JSON.stringify(state.selectedRoles));
+            renderRoleChips();
+            updateStatus();
+            console.log('[selectAll] Selected all roles');
+        }
+
+        // 测试持久化
+        function testPersistence() {
+            console.log('[testPersistence] Current localStorage:', localStorage.getItem('selectedRoles'));
+            
+            // 模拟页面刷新
+            const currentSelection = [...state.selectedRoles];
+            state.selectedRoles = [];
+            renderRoleChips();
+            updateStatus();
+            
+            setTimeout(() => {
+                loadSavedSelection();
+                renderRoleChips();
+                updateStatus();
+                
+                const isRestored = JSON.stringify(currentSelection) === JSON.stringify(state.selectedRoles);
+                alert(`持久化测试${isRestored ? '成功' : '失败'}！\n\n原始选择: ${currentSelection.join(', ')}\n恢复选择: ${state.selectedRoles.join(', ')}`);
+            }, 1000);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
