@@ -6213,6 +6213,7 @@ ${detailedContext}
             }
             
             let messageEl;
+            let messageSuccessfullyAdded = false;
             
             try {
                 switch (type) {
@@ -6264,25 +6265,47 @@ ${detailedContext}
                     messageEl.style.visibility = 'visible';
                     messageEl.style.opacity = '1';
                     
+                    // Core message addition - this is the critical part
                     container.appendChild(messageEl);
+                    messageSuccessfullyAdded = true;
                     
-                    // Force scroll to bottom with a small delay to ensure rendering
-                    setTimeout(() => container.scrollTop = container.scrollHeight, 10);
+                    console.log('[addMessage] Message successfully added to DOM');
                     
-                    // Debug: Verify message was added
-                    const addedElement = container.querySelector(`#${messageEl.id}`) || 
-                                        container.querySelector('.message:last-child');
-                    if (addedElement) {
-                        console.log('[addMessage] Message successfully added to DOM');
-                    } else {
-                        console.error('[addMessage] Failed to add message to DOM');
+                    // Non-critical operations - handle failures separately
+                    try {
+                        // Force scroll to bottom with a small delay to ensure rendering
+                        setTimeout(() => {
+                            try {
+                                container.scrollTop = container.scrollHeight;
+                            } catch (scrollError) {
+                                console.warn('[addMessage] Scroll operation failed:', scrollError);
+                                // Don't show error notification for scroll failures
+                            }
+                        }, 10);
+                        
+                        // Debug: Verify message was added (non-critical)
+                        const addedElement = container.querySelector(`#${messageEl.id}`) || 
+                                            container.querySelector('.message:last-child');
+                        if (addedElement) {
+                            console.log('[addMessage] Message verification successful');
+                        } else {
+                            console.warn('[addMessage] Message verification failed, but message was added');
+                        }
+                    } catch (nonCriticalError) {
+                        console.warn('[addMessage] Non-critical operation failed:', nonCriticalError);
+                        // Don't show error notification for non-critical failures
                     }
                 } else {
                     console.error('[addMessage] Failed to create message element:', { type, data });
+                    // Only show error notification if message creation failed
+                    showNotification('添加消息失败', 'error');
                 }
             } catch (error) {
-                console.error('[addMessage] Error adding message:', error, { type, data });
-                showNotification('添加消息失败', 'error');
+                console.error('[addMessage] Critical error adding message:', error, { type, data });
+                // Only show error notification if message wasn't successfully added
+                if (!messageSuccessfullyAdded) {
+                    showNotification('添加消息失败', 'error');
+                }
             }
         }
 
