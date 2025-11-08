@@ -12,6 +12,7 @@ Single-page AI workflow studio (v2.2) with Express + Socket.IO backend. The appl
 - **Real-time Communication**: Socket.IO powered real-time updates
 - **Data Persistence**: REST API backend with JSON storage for workflows, roles, prompts, and settings
 - **Offline Support**: Automatic fallback to localStorage cache when offline or server unavailable
+- **Python Code Execution**: Secure sandbox for executing Python code with file generation and download capabilities
 
 ## Prerequisites
 
@@ -95,20 +96,25 @@ CORS_ORIGINS="https://example.com,https://app.example.com" npm start
 │   │   ├── workflows.json    # Workflow templates
 │   │   ├── roles.json        # Role definitions
 │   │   ├── prompts.json      # Prompt templates
-│   │   └── settings.json     # User settings and variables
+│   │   ├── settings.json     # User settings and variables
+│   │   └── python-output/    # Generated files from Python execution
 │   ├── routes/               # REST API routes
 │   │   ├── workflows.js      # Workflow CRUD endpoints
 │   │   ├── roles.js          # Role CRUD endpoints
 │   │   ├── prompts.js        # Prompt CRUD endpoints
-│   │   └── settings.js       # Settings CRUD endpoints
+│   │   ├── settings.js       # Settings CRUD endpoints
+│   │   └── pythonExecution.js # Python code execution API
 │   ├── utils/                # Utility modules
 │   │   ├── jsonStore.js      # JSON file storage with caching
-│   │   └── validators.js     # Data validation
+│   │   ├── validators.js     # Data validation
+│   │   ├── pythonExecutor.js # Python code execution engine
+│   │   └── fileManager.js    # File management system
 │   └── middleware/           # Express middleware
 │       ├── errorHandler.js   # Error handling
 │       └── requestLogger.js  # Request logging
 ├── public/
 │   ├── index.html            # Single-page application UI
+│   ├── test-python-execution.html # Python execution test page
 │   └── js/
 │       ├── apiClient.js      # API client with offline support
 │       └── socketClient.js   # Socket.IO client
@@ -116,7 +122,9 @@ CORS_ORIGINS="https://example.com,https://app.example.com" npm start
 ├── .gitignore                # Git ignore rules
 ├── README.md                 # This file
 ├── DEVELOPER_NOTES.md        # Technical documentation
-└── JSON_STORAGE_API_SUMMARY.md  # API documentation
+├── JSON_STORAGE_API_SUMMARY.md  # API documentation
+├── PYTHON_EXECUTION_SANDBOX.md  # Python sandbox feature documentation
+└── PYTHON_SANDBOX_IMPLEMENTATION.md  # Python sandbox implementation details
 ```
 
 ## API Endpoints
@@ -160,6 +168,535 @@ The application provides RESTful API endpoints for managing workflows, roles, pr
 - `PUT /api/settings/api-configs` - Update custom API configurations
 
 See `server/README.md` for detailed API documentation.
+
+## Python Code Execution Sandbox
+
+The application includes a secure Python code execution sandbox that allows AI roles (especially editors) to generate and execute Python code, create files, and provide downloadable outputs.
+
+### Overview
+
+The Python execution sandbox provides:
+- **Secure Code Execution**: Safe execution environment with timeout and output limits
+- **File Generation**: Create and download files (Markdown, CSV, JSON, etc.)
+- **Automatic Detection**: Code blocks are automatically detected in role messages
+- **User-Friendly Interface**: Execute code with a single click in the UI
+- **Real-time Feedback**: View execution results, errors, and execution time
+
+### Use Cases
+
+- **Document Generation**: Editors can generate Markdown execution plans and project documents
+- **Data Export**: Create CSV, JSON, or other data format files
+- **Report Creation**: Generate formatted reports with data analysis
+- **Script Execution**: Run data processing or transformation scripts
+- **File Conversion**: Convert between different file formats
+
+### How to Use
+
+#### 1. Role Generates Python Code
+
+AI roles can include Python code in their messages using standard Markdown code blocks:
+
+````markdown
+```python
+# Example: Generate a project plan document
+content = """# Project Execution Plan
+
+## Phase 1: Analysis
+- Define objectives
+- List requirements
+
+## Phase 2: Implementation
+- Design solution
+- Allocate resources
+"""
+
+with open('project_plan.md', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("✅ Project plan generated: project_plan.md")
+```
+````
+
+#### 2. Execute Code in the UI
+
+When a role message contains Python code:
+1. An execution panel appears automatically below the message
+2. The code is displayed with syntax highlighting
+3. Click the **"Execute"** button to run the code
+4. Click the **"Copy"** button to copy code to clipboard
+
+#### 3. View Results
+
+After execution, the panel displays:
+- **Standard Output**: Console output from the code
+- **Error Messages**: Any errors that occurred
+- **Execution Time**: How long the code took to run
+- **Generated Files**: List of files created with download links
+
+#### 4. Download Files
+
+Click the download link next to any generated file to save it to your computer. Files are automatically named and assigned the correct MIME type.
+
+### Code Format Requirements
+
+#### Standard Code Block
+````markdown
+```python
+print("Hello, World!")
+```
+````
+
+#### With File Generation
+````python
+```python
+# Generate a CSV file
+import csv
+
+data = [
+    ['Name', 'Department', 'Salary'],
+    ['Alice', 'Engineering', '15000'],
+    ['Bob', 'Marketing', '12000']
+]
+
+with open('employees.csv', 'w', encoding='utf-8', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerows(data)
+
+print("✅ CSV file generated: employees.csv")
+```
+````
+
+### Example: Editor Generating Markdown Document
+
+Here's a complete example of an editor role generating an execution plan:
+
+````python
+```python
+# Editor generates a comprehensive project execution plan
+
+plan_content = """# Software Development Project Plan
+
+## 1. Project Overview
+**Project Name**: AI Workflow Studio Enhancement  
+**Duration**: 8 weeks  
+**Team Size**: 5 developers
+
+## 2. Phase 1: Requirements Analysis (Week 1-2)
+### Objectives
+- Gather stakeholder requirements
+- Define functional specifications
+- Create user stories
+
+### Deliverables
+- Requirements document
+- User story backlog
+- Initial wireframes
+
+## 3. Phase 2: Design (Week 3-4)
+### Objectives
+- System architecture design
+- Database schema design
+- UI/UX design
+
+### Deliverables
+- Architecture diagram
+- Database schema
+- High-fidelity mockups
+
+## 4. Phase 3: Implementation (Week 5-6)
+### Objectives
+- Core feature development
+- Integration with existing systems
+- Unit testing
+
+### Deliverables
+- Working prototype
+- Unit test coverage report
+- API documentation
+
+## 5. Phase 4: Testing & Deployment (Week 7-8)
+### Objectives
+- Integration testing
+- User acceptance testing
+- Production deployment
+
+### Deliverables
+- Test reports
+- Deployment guide
+- User documentation
+
+## 6. Risk Management
+- **Technical Risks**: Complexity of AI integration
+- **Schedule Risks**: Tight timeline
+- **Resource Risks**: Limited team size
+
+## 7. Success Metrics
+- All features implemented and tested
+- 90% test coverage
+- Zero critical bugs in production
+- Positive user feedback
+
+---
+*Document generated on {date}*
+"""
+
+import datetime
+current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+final_content = plan_content.format(date=current_date)
+
+# Save to file
+with open('execution_plan.md', 'w', encoding='utf-8') as f:
+    f.write(final_content)
+
+print("✅ Execution plan generated successfully!")
+print(f"📄 File: execution_plan.md ({len(final_content)} bytes)")
+```
+````
+
+### API Reference
+
+#### Execute Python Code
+
+**Endpoint**: `POST /api/execute-python/execute`
+
+**Request Body**:
+```json
+{
+  "code": "print('Hello, World!')"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "exitCode": 0,
+  "stdout": "Hello, World!\n",
+  "stderr": "",
+  "executionTime": 123,
+  "files": [
+    {
+      "fileId": "1234567890-abc-def-file.txt",
+      "filename": "file.txt",
+      "size": 1024,
+      "mimeType": "text/plain",
+      "downloadUrl": "/api/execute-python/download/1234567890-abc-def-file.txt"
+    }
+  ]
+}
+```
+
+#### Download Generated File
+
+**Endpoint**: `GET /api/execute-python/download/:fileId`
+
+**Response**: File content with appropriate `Content-Type` and `Content-Disposition` headers
+
+#### Get File Information
+
+**Endpoint**: `GET /api/execute-python/file/:fileId`
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "fileId": "1234567890-abc-def-file.txt",
+    "filename": "file.txt",
+    "size": 1024,
+    "mimeType": "text/plain",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+#### Extract Code from Message
+
+**Endpoint**: `POST /api/execute-python/extract-code`
+
+**Request Body**:
+```json
+{
+  "message": "Here is some code:\n```python\nprint('test')\n```"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "hasCode": true,
+    "codeBlocks": [
+      {
+        "type": "python",
+        "code": "print('test')"
+      }
+    ]
+  }
+}
+```
+
+#### Get Execution Statistics
+
+**Endpoint**: `GET /api/execute-python/stats`
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "totalFiles": 42,
+    "totalSize": 1048576,
+    "oldestFile": "2024-01-01T00:00:00.000Z",
+    "newestFile": "2024-01-02T00:00:00.000Z"
+  }
+}
+```
+
+#### Delete File
+
+**Endpoint**: `DELETE /api/execute-python/file/:fileId`
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "File deleted successfully"
+}
+```
+
+### Security Features
+
+The Python execution sandbox implements multiple security measures:
+
+#### 1. Timeout Protection (30 seconds)
+- Prevents infinite loops and long-running processes
+- Automatically terminates processes that exceed the time limit
+- Configurable via environment variables
+
+#### 2. Output Limitation (1MB)
+- Prevents memory overflow from excessive output
+- Automatically truncates output that exceeds the limit
+- Protects server resources
+
+#### 3. Process Isolation
+- Each execution runs in a separate Python process
+- Uses Node.js `child_process` for isolation
+- Processes are cleaned up after completion
+
+#### 4. File System Isolation
+- Generated files are stored in a dedicated directory
+- Files use unique IDs to prevent conflicts
+- Cannot access or modify system files
+
+#### 5. Automatic Cleanup
+- Files older than 24 hours are automatically deleted
+- Runs every hour to free up disk space
+- Prevents disk space exhaustion
+
+#### 6. Error Containment
+- All errors are caught and returned safely
+- Failed executions don't crash the server
+- Detailed error messages for debugging
+
+### Supported File Formats
+
+The sandbox can generate and serve files in various formats:
+
+| Format | Extension | MIME Type | Use Case |
+|--------|-----------|-----------|----------|
+| Markdown | `.md` | `text/markdown` | Documentation, plans |
+| Plain Text | `.txt` | `text/plain` | Logs, notes |
+| CSV | `.csv` | `text/csv` | Data exports |
+| JSON | `.json` | `application/json` | Structured data |
+| HTML | `.html` | `text/html` | Reports, pages |
+| Python | `.py` | `text/x-python` | Scripts |
+| JavaScript | `.js` | `application/javascript` | Code files |
+| XML | `.xml` | `application/xml` | Data interchange |
+
+### Troubleshooting
+
+#### Code Doesn't Execute
+
+**Symptoms**: No execution panel appears or execution button doesn't work
+
+**Solutions**:
+1. Check that Python is installed: `python3 --version`
+2. Verify code block format uses proper Markdown syntax
+3. Check browser console for JavaScript errors
+4. Ensure server is running: visit `/api/health`
+
+#### Files Can't Be Downloaded
+
+**Symptoms**: Download link doesn't work or returns 404
+
+**Solutions**:
+1. Verify file was actually generated (check stdout for confirmation)
+2. Check that the file ID is correct
+3. Verify server has write permissions to the output directory
+4. Check server logs for file system errors
+
+#### Execution Timeout
+
+**Symptoms**: Code execution stops after 30 seconds
+
+**Solutions**:
+1. Optimize your code to run faster
+2. Break large operations into smaller chunks
+3. Avoid infinite loops or blocking operations
+4. Consider increasing timeout (requires server configuration)
+
+#### Permission Errors
+
+**Symptoms**: "Permission denied" errors when creating files
+
+**Solutions**:
+1. Check server process has write permissions
+2. Verify output directory exists and is writable
+3. Check file system disk space
+4. Review server user permissions
+
+#### Import Errors
+
+**Symptoms**: "ModuleNotFoundError" when executing code
+
+**Solutions**:
+1. Install required Python packages on the server
+2. Use only standard library modules
+3. Check Python version compatibility
+4. Verify virtual environment is activated (if used)
+
+### Configuration
+
+You can configure the Python sandbox using environment variables:
+
+```bash
+# Python executable path (default: python3)
+PYTHON_PATH=python3
+
+# Execution timeout in milliseconds (default: 30000)
+PYTHON_TIMEOUT=30000
+
+# Maximum output size in bytes (default: 1048576)
+PYTHON_MAX_OUTPUT=1048576
+
+# Output directory for generated files (default: {dataDir}/python-output)
+PYTHON_OUTPUT_DIR=/path/to/output
+```
+
+### Testing
+
+A comprehensive test page is available at:
+```
+http://localhost:3000/public/test-python-execution.html
+```
+
+The test page includes:
+- **Basic Execution**: Test simple Python code
+- **File Generation**: Test file creation and download
+- **Error Handling**: Test error capture and display
+- **Code Extraction**: Test code block detection
+- **Performance**: Test execution speed
+- **Timeout Protection**: Test timeout handling
+
+### Best Practices
+
+#### For AI Roles
+
+1. **Clear Output**: Always print confirmation messages when files are generated
+2. **Error Handling**: Use try-except blocks for robust code
+3. **File Naming**: Use descriptive file names
+4. **Documentation**: Add comments to explain complex logic
+5. **Validation**: Validate inputs before processing
+
+#### For Users
+
+1. **Review Code**: Always review code before executing
+2. **Check Results**: Verify stdout/stderr for any issues
+3. **Download Files**: Download important files immediately
+4. **Clean Up**: Delete unnecessary files to save space
+5. **Report Issues**: Check logs if something goes wrong
+
+### Limitations
+
+- **Python Version**: Uses system default Python 3.x
+- **Libraries**: Only system-installed packages available
+- **File System**: Cannot modify files outside output directory
+- **Network**: Internet access depends on system configuration
+- **Execution Time**: Maximum 30 seconds per execution
+- **Output Size**: Maximum 1MB combined stdout/stderr
+
+### Advanced Usage
+
+#### Multi-File Generation
+
+```python
+# Generate multiple related files
+import json
+import csv
+
+# Generate JSON data file
+data = {"project": "AI Studio", "version": "2.2"}
+with open('config.json', 'w') as f:
+    json.dump(data, f, indent=2)
+
+# Generate CSV report
+with open('report.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(['Metric', 'Value'])
+    writer.writerow(['Users', '1000'])
+
+# Generate Markdown summary
+with open('summary.md', 'w') as f:
+    f.write('# Project Summary\n\nGenerated multiple files.')
+
+print("✅ Generated 3 files: config.json, report.csv, summary.md")
+```
+
+#### Data Processing Pipeline
+
+```python
+# Process data and generate visualization report
+import json
+import datetime
+
+# Sample data processing
+data = [10, 20, 30, 40, 50]
+total = sum(data)
+average = total / len(data)
+max_val = max(data)
+min_val = min(data)
+
+# Generate detailed report
+report = f"""# Data Analysis Report
+
+**Generated**: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+## Summary Statistics
+
+- **Total**: {total}
+- **Average**: {average}
+- **Maximum**: {max_val}
+- **Minimum**: {min_val}
+- **Count**: {len(data)}
+
+## Data Points
+
+{chr(10).join(f'- Point {i+1}: {v}' for i, v in enumerate(data))}
+
+## Conclusion
+
+Data analysis completed successfully.
+"""
+
+with open('analysis_report.md', 'w') as f:
+    f.write(report)
+
+print(f"✅ Analysis complete: {len(data)} points processed")
+```
+
+For detailed implementation information, see [PYTHON_EXECUTION_SANDBOX.md](./PYTHON_EXECUTION_SANDBOX.md) and [PYTHON_SANDBOX_IMPLEMENTATION.md](./PYTHON_SANDBOX_IMPLEMENTATION.md).
 
 ## Socket.IO
 
@@ -389,6 +926,48 @@ Ensure that:
 1. The server is running
 2. There are no firewall rules blocking the connection
 3. CORS is properly configured if accessing from a different origin
+
+### Python Code Execution Issues
+
+#### Python Not Found
+
+If you get "Python not found" errors:
+1. Install Python 3: `sudo apt-get install python3` (Ubuntu/Debian) or `brew install python3` (macOS)
+2. Verify installation: `python3 --version`
+3. Set custom Python path if needed: `PYTHON_PATH=/usr/local/bin/python3 npm start`
+
+#### Code Execution Panel Not Appearing
+
+If the execution panel doesn't appear for Python code:
+1. Ensure code blocks use proper Markdown format with ```python tag
+2. Check browser console for JavaScript errors (F12)
+3. Verify the message is from a role (not user)
+4. Clear browser cache and reload the page
+
+#### File Download Issues
+
+If you cannot download generated files:
+1. Check that files were actually created (look for success message in stdout)
+2. Verify server has write permissions: `ls -la server/data/python-output/`
+3. Check disk space: `df -h`
+4. Review server logs for file system errors
+
+#### Slow Execution
+
+If code execution is slow:
+1. Profile your Python code to find bottlenecks
+2. Optimize algorithms and reduce complexity
+3. Avoid I/O-heavy operations when possible
+4. Consider breaking large operations into smaller chunks
+
+#### Memory or Timeout Issues
+
+If code hits timeout or memory limits:
+1. Reduce data size being processed
+2. Optimize memory usage (avoid storing large data in memory)
+3. Break operations into smaller chunks
+4. Remove infinite loops or long-running operations
+5. Consider increasing limits via environment variables (PYTHON_TIMEOUT, PYTHON_MAX_OUTPUT)
 
 ## License
 
