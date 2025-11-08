@@ -43,3 +43,7 @@ tmp/
 temp/
 *.tmp
 *.bak
+
+# Python execution output
+server/data/python-output/
+*.md.bak

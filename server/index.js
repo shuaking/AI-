@@ -13,6 +13,7 @@ const createWorkflowsRouter = require('./routes/workflows');
 const createRolesRouter = require('./routes/roles');
 const createPromptsRouter = require('./routes/prompts');
 const createSettingsRouter = require('./routes/settings');
+const createPythonExecutionRouter = require('./routes/pythonExecution');
 
 const app = express();
 const server = http.createServer(app);
@@ -69,6 +70,7 @@ app.use('/api/workflows', createWorkflowsRouter(jsonStore));
 app.use('/api/roles', createRolesRouter(jsonStore));
 app.use('/api/prompts', createPromptsRouter(jsonStore));
 app.use('/api/settings', createSettingsRouter(jsonStore));
+app.use('/api/execute-python', createPythonExecutionRouter(jsonStore, dataDir));
 
 app.use(errorHandler);
 
@@ -102,6 +104,9 @@ server.listen(config.port, config.host, () => {
   console.log(`  CRUD /api/roles`);
   console.log(`  CRUD /api/prompts`);
   console.log(`  CRUD /api/settings`);
+  console.log(`  POST /api/execute-python/execute - Execute Python code`);
+  console.log(`  GET  /api/execute-python/download/:fileId - Download generated file`);
+  console.log(`  GET  /api/execute-python/stats - Get execution statistics`);
   console.log('='.repeat(60));
 });
 

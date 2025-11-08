@@ -6309,7 +6309,400 @@ ${detailedContext}
             state.currentStreamingMessage = null;
             state.currentRole = null;
             
+            // 检查消息中是否包含Python代码，如果有则处理
+            console.log('[finalizeStreamingMessage] Checking for Python code blocks...');
+            processPythonCodeInMessage(messageEl, content);
+            
             console.log('[finalizeStreamingMessage] Message finalized successfully');
+        }
+
+        // ========== Python代码执行功能 ==========
+        
+        /**
+         * 处理消息中的Python代码块
+         */
+        async function processPythonCodeInMessage(messageEl, content) {
+            try {
+                console.log('[processPythonCodeInMessage] Processing message for Python code');
+                
+                // 调用后端API提取Python代码块
+                const response = await fetch('/api/execute-python/extract-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: content })
+                });
+
+                if (!response.ok) {
+                    console.warn('[processPythonCodeInMessage] Failed to extract code:', response.statusText);
+                    return;
+                }
+
+                const result = await response.json();
+                console.log('[processPythonCodeInMessage] Extraction result:', result);
+
+                if (!result.data.hasCode) {
+                    console.log('[processPythonCodeInMessage] No Python code found in message');
+                    return;
+                }
+
+                // 添加Python代码执行面板
+                addPythonExecutionPanel(messageEl, result.data.codeBlocks, result.data.directive);
+            } catch (error) {
+                console.error('[processPythonCodeInMessage] Error:', error);
+            }
+        }
+
+        /**
+         * 添加Python代码执行面板到消息
+         */
+        function addPythonExecutionPanel(messageEl, codeBlocks, directive) {
+            const panelContainer = document.createElement('div');
+            panelContainer.className = 'python-execution-panel';
+            
+            // 添加代码块显示
+            if (codeBlocks && codeBlocks.length > 0) {
+                console.log('[addPythonExecutionPanel] Adding code blocks:', codeBlocks.length);
+                
+                codeBlocks.forEach((block, index) => {
+                    const codeContainer = document.createElement('div');
+                    codeContainer.className = 'python-code-block';
+                    
+                    const codeId = `python-code-${Date.now()}-${index}`;
+                    codeContainer.innerHTML = `
+                        <div class="code-header">
+                            <span class="code-language">Python</span>
+                            <button class="code-execute-btn" onclick="executePythonCode('${codeId}')">▶️ 执行</button>
+                            <button class="code-copy-btn" onclick="copyPythonCode('${codeId}')">📋 复制</button>
+                        </div>
+                        <pre id="${codeId}" class="code-content"><code>${escapeHtml(block.code)}</code></pre>
+                        <div class="code-result" id="result-${codeId}" style="display: none;"></div>
+                    `;
+                    
+                    panelContainer.appendChild(codeContainer);
+                });
+            }
+
+            // 添加执行指令按钮
+            if (directive) {
+                console.log('[addPythonExecutionPanel] Found execution directive');
+                const directiveBtn = document.createElement('button');
+                directiveBtn.className = 'directive-execute-btn';
+                directiveBtn.textContent = '▶️ 执行Python代码生成文件';
+                directiveBtn.onclick = () => executePythonDirective(directive, messageEl);
+                panelContainer.appendChild(directiveBtn);
+            }
+
+            // 将面板添加到消息
+            messageEl.appendChild(panelContainer);
+            
+            // 添加样式
+            if (!document.getElementById('python-execution-styles')) {
+                const style = document.createElement('style');
+                style.id = 'python-execution-styles';
+                style.textContent = `
+                    .python-execution-panel {
+                        margin-top: 12px;
+                        padding-top: 12px;
+                        border-top: 1px solid rgba(0, 212, 255, 0.2);
+                    }
+
+                    .python-code-block {
+                        margin-bottom: 12px;
+                        background: rgba(30, 30, 50, 0.8);
+                        border: 1px solid rgba(0, 212, 255, 0.3);
+                        border-radius: 8px;
+                        overflow: hidden;
+                        font-family: 'Monaco', 'Courier New', monospace;
+                        font-size: 12px;
+                    }
+
+                    .code-header {
+                        background: rgba(0, 212, 255, 0.1);
+                        padding: 8px 12px;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+                    }
+
+                    .code-language {
+                        color: #00d4ff;
+                        font-weight: 600;
+                        font-size: 11px;
+                    }
+
+                    .code-execute-btn,
+                    .code-copy-btn,
+                    .directive-execute-btn {
+                        padding: 4px 12px;
+                        background: rgba(0, 212, 255, 0.2);
+                        border: 1px solid rgba(0, 212, 255, 0.4);
+                        color: #00d4ff;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 11px;
+                        transition: all 0.3s ease;
+                    }
+
+                    .code-execute-btn:hover,
+                    .code-copy-btn:hover,
+                    .directive-execute-btn:hover {
+                        background: rgba(0, 212, 255, 0.3);
+                        border-color: rgba(0, 212, 255, 0.6);
+                    }
+
+                    .code-execute-btn:active,
+                    .code-copy-btn:active,
+                    .directive-execute-btn:active {
+                        transform: scale(0.98);
+                    }
+
+                    .code-content {
+                        padding: 12px;
+                        margin: 0;
+                        color: #a0a0a0;
+                        overflow-x: auto;
+                        max-height: 300px;
+                        overflow-y: auto;
+                    }
+
+                    .code-result {
+                        padding: 12px;
+                        background: rgba(0, 0, 0, 0.3);
+                        border-top: 1px solid rgba(0, 212, 255, 0.1);
+                        color: #a0a0a0;
+                        font-size: 11px;
+                        max-height: 200px;
+                        overflow-y: auto;
+                    }
+
+                    .directive-execute-btn {
+                        display: block;
+                        width: 100%;
+                        padding: 8px 12px;
+                        margin-top: 12px;
+                        background: rgba(76, 175, 80, 0.2);
+                        border: 1px solid rgba(76, 175, 80, 0.4);
+                        color: #4caf50;
+                    }
+
+                    .directive-execute-btn:hover {
+                        background: rgba(76, 175, 80, 0.3);
+                        border-color: rgba(76, 175, 80, 0.6);
+                    }
+
+                    .python-result-success {
+                        color: #4caf50;
+                    }
+
+                    .python-result-error {
+                        color: #ff4444;
+                    }
+
+                    .python-result-executing {
+                        color: #00d4ff;
+                    }
+
+                    .execution-stats {
+                        margin-top: 8px;
+                        padding-top: 8px;
+                        border-top: 1px solid rgba(0, 212, 255, 0.1);
+                        font-size: 10px;
+                        color: #707080;
+                    }
+
+                    .file-download-button {
+                        display: inline-block;
+                        margin-top: 8px;
+                        padding: 6px 12px;
+                        background: rgba(76, 175, 80, 0.2);
+                        border: 1px solid rgba(76, 175, 80, 0.4);
+                        color: #4caf50;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 11px;
+                        text-decoration: none;
+                    }
+
+                    .file-download-button:hover {
+                        background: rgba(76, 175, 80, 0.3);
+                        border-color: rgba(76, 175, 80, 0.6);
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+
+        /**
+         * 执行Python代码
+         */
+        async function executePythonCode(codeId) {
+            try {
+                const codeEl = document.getElementById(codeId);
+                if (!codeEl) {
+                    console.error('[executePythonCode] Code element not found:', codeId);
+                    return;
+                }
+
+                const code = codeEl.textContent;
+                const resultEl = document.getElementById(`result-${codeId}`);
+
+                if (!resultEl) {
+                    console.error('[executePythonCode] Result element not found');
+                    return;
+                }
+
+                // 显示执行状态
+                resultEl.style.display = 'block';
+                resultEl.className = 'code-result python-result-executing';
+                resultEl.textContent = '🔄 正在执行Python代码...';
+
+                console.log('[executePythonCode] Executing code:', code.substring(0, 100) + '...');
+
+                // 调用后端API执行代码
+                const response = await fetch('/api/execute-python/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log('[executePythonCode] Execution result:', result);
+
+                // 显示结果
+                let resultHTML = '';
+                
+                if (result.success) {
+                    resultEl.className = 'code-result python-result-success';
+                    resultHTML += '✅ <strong>执行成功</strong>\n\n';
+                } else {
+                    resultEl.className = 'code-result python-result-error';
+                    resultHTML += '❌ <strong>执行失败</strong>\n\n';
+                }
+
+                // 显示输出
+                if (result.stdout) {
+                    resultHTML += '<strong>标准输出:</strong>\n' + result.stdout + '\n\n';
+                }
+
+                // 显示错误信息
+                if (result.stderr) {
+                    resultHTML += '<strong>错误信息:</strong>\n' + result.stderr + '\n\n';
+                }
+
+                // 显示执行时间
+                resultHTML += `<div class="execution-stats">⏱️ 执行耗时: ${result.executionTime}ms</div>`;
+
+                // 显示生成的文件
+                if (result.files && result.files.length > 0) {
+                    resultHTML += '<div class="execution-stats"><strong>📁 生成的文件:</strong>\n';
+                    result.files.forEach(file => {
+                        resultHTML += `<div>
+                            <a href="${file.downloadUrl}" class="file-download-button" download="${file.filename}">
+                                ⬇️ ${file.filename} (${(file.size / 1024).toFixed(2)}KB)
+                            </a>
+                        </div>`;
+                    });
+                    resultHTML += '</div>';
+                }
+
+                resultEl.innerHTML = resultHTML;
+                showNotification('Python代码执行完成', result.success ? 'success' : 'error');
+
+            } catch (error) {
+                console.error('[executePythonCode] Error:', error);
+                const resultEl = document.getElementById(`result-${codeId}`);
+                if (resultEl) {
+                    resultEl.style.display = 'block';
+                    resultEl.className = 'code-result python-result-error';
+                    resultEl.textContent = '❌ 执行出错: ' + error.message;
+                }
+                showNotification('Python代码执行失败: ' + error.message, 'error');
+            }
+        }
+
+        /**
+         * 复制Python代码
+         */
+        function copyPythonCode(codeId) {
+            try {
+                const codeEl = document.getElementById(codeId);
+                if (!codeEl) {
+                    console.error('[copyPythonCode] Code element not found');
+                    return;
+                }
+
+                const code = codeEl.textContent;
+                navigator.clipboard.writeText(code).then(() => {
+                    showNotification('代码已复制到剪贴板', 'success');
+                }).catch(err => {
+                    console.error('[copyPythonCode] Copy failed:', err);
+                    showNotification('复制失败', 'error');
+                });
+            } catch (error) {
+                console.error('[copyPythonCode] Error:', error);
+            }
+        }
+
+        /**
+         * 执行Python执行指令
+         */
+        async function executePythonDirective(directive, messageEl) {
+            try {
+                console.log('[executePythonDirective] Executing directive:', directive);
+
+                // 显示执行状态
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'execution-status python-result-executing';
+                statusDiv.textContent = '🔄 正在执行Python代码...';
+                messageEl.appendChild(statusDiv);
+
+                // 调用后端API执行指令中的代码
+                const response = await fetch('/api/execute-python/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code: directive.code })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log('[executePythonDirective] Result:', result);
+
+                // 更新状态
+                statusDiv.className = result.success ? 'python-result-success' : 'python-result-error';
+                
+                let statusHTML = result.success ? '✅ <strong>执行成功</strong>' : '❌ <strong>执行失败</strong>';
+                statusHTML += `<div class="execution-stats">⏱️ 耗时: ${result.executionTime}ms</div>`;
+
+                // 显示生成的文件
+                if (result.files && result.files.length > 0) {
+                    statusHTML += '<div class="execution-stats"><strong>📁 生成的文件:</strong>\n';
+                    result.files.forEach(file => {
+                        statusHTML += `<div><a href="${file.downloadUrl}" class="file-download-button" download="${file.filename}">⬇️ ${file.filename}</a></div>`;
+                    });
+                    statusHTML += '</div>';
+                }
+
+                statusDiv.innerHTML = statusHTML;
+                showNotification('Python代码执行完成', result.success ? 'success' : 'error');
+
+            } catch (error) {
+                console.error('[executePythonDirective] Error:', error);
+                showNotification('执行失败: ' + error.message, 'error');
+            }
         }
 
         // 决策功能优化
@@ -6743,6 +7136,14 @@ ${detailedContext}
                     messageSuccessfullyAdded = true;
                     
                     console.log('[addMessage] Message successfully added to DOM');
+                    
+                    // 在批量模式下检查是否有Python代码需要处理
+                    if (type === 'role' && state.outputMode === 'batch') {
+                        console.log('[addMessage] Batch mode detected, checking for Python code in role message');
+                        setTimeout(() => {
+                            processPythonCodeInMessage(messageEl, data.content);
+                        }, 100);
+                    }
                     
                     // Non-critical operations - handle failures separately
                     try {

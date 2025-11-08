@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python代码执行沙箱测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1, h2 {
+            color: #00d4ff;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .test-section {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .test-case {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: rgba(30, 30, 50, 0.8);
+            border-left: 3px solid rgba(0, 212, 255, 0.5);
+        }
+
+        button {
+            padding: 8px 16px;
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid rgba(0, 212, 255, 0.4);
+            color: #00d4ff;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+            font-size: 12px;
+        }
+
+        button:hover {
+            background: rgba(0, 212, 255, 0.3);
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: rgba(30, 30, 50, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: #a0a0a0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Monaco', monospace;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .result {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Monaco', monospace;
+            font-size: 11px;
+            color: #a0a0a0;
+        }
+
+        .success {
+            color: #4caf50;
+            border-left: 3px solid #4caf50;
+        }
+
+        .error {
+            color: #ff4444;
+            border-left: 3px solid #ff4444;
+        }
+
+        .info {
+            color: #00d4ff;
+            border-left: 3px solid #00d4ff;
+        }
+
+        pre {
+            background: rgba(30, 30, 50, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-left: 10px;
+        }
+
+        .status.running {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐍 Python代码执行沙箱测试</h1>
+
+        <div class="test-section">
+            <h2>API端点测试</h2>
+
+            <div class="test-case">
+                <h3>1. 执行简单Python代码</h3>
+                <p>测试基础的Python代码执行功能</p>
+                <textarea id="code-simple">print("Hello, Python!")
+print("2 + 3 =", 2 + 3)
+import time
+print("Current time:", time.strftime("%Y-%m-%d %H:%M:%S"))</textarea>
+                <button onclick="testExecuteSimple()">执行代码</button>
+                <span id="status-simple" class="status"></span>
+                <div id="result-simple" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="test-case">
+                <h3>2. 测试文件生成</h3>
+                <p>测试Python生成文件的功能</p>
+                <textarea id="code-file">
+# 生成一个Markdown文件
+content = """# 测试文档
+
+## 章节1
+这是一个测试文档。
+
+## 章节2
+- 列表项1
+- 列表项2
+- 列表项3
+
+## 代码示例
+```python
+def hello():
+    print("Hello, World!")
+```
+"""
+
+with open('test_document.md', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("✅ 文件已生成: test_document.md")
+print("文件大小:", len(content), "字节")
+</textarea>
+                <button onclick="testExecuteFileGeneration()">执行代码生成文件</button>
+                <span id="status-file" class="status"></span>
+                <div id="result-file" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="test-case">
+                <h3>3. 测试错误处理</h3>
+                <p>测试代码执行中的错误处理</p>
+                <textarea id="code-error">
+# 故意产生一个错误
+x = 10
+y = 0
+result = x / y
+print(result)
+</textarea>
+                <button onclick="testExecuteError()">执行代码（应产生错误）</button>
+                <span id="status-error" class="status"></span>
+                <div id="result-error" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="test-case">
+                <h3>4. 测试代码提取</h3>
+                <p>测试从消息中提取Python代码块</p>
+                <textarea id="extract-message">这是一条包含Python代码的消息：
+
+```python
+def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)
+
+print("Fibonacci(10) =", fibonacci(10))
+```
+
+这是另一段说明文字。</textarea>
+                <button onclick="testExtractCode()">提取代码块</button>
+                <span id="status-extract" class="status"></span>
+                <div id="result-extract" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="test-case">
+                <h3>5. 性能测试</h3>
+                <p>测试代码执行性能（计算Fibonacci）</p>
+                <button onclick="testPerformance()">运行性能测试</button>
+                <span id="status-performance" class="status"></span>
+                <div id="result-performance" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="test-case">
+                <h3>6. 测试超时保护</h3>
+                <p>测试代码执行超时保护（应在30秒后超时）</p>
+                <textarea id="code-timeout">import time
+print("开始长时间运行...")
+for i in range(60):
+    print(f"进度: {i}%")
+    time.sleep(1)
+print("完成")
+</textarea>
+                <button onclick="testTimeout()">测试超时</button>
+                <span id="status-timeout" class="status"></span>
+                <div id="result-timeout" class="result" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>前端功能测试</h2>
+            <div class="test-case">
+                <h3>模拟角色消息中的Python代码</h3>
+                <p>显示完整的前端交互流程</p>
+                <button onclick="simulateRoleMessage()">模拟编辑员消息</button>
+                <div id="simulated-message" style="margin-top: 15px; padding: 15px; background: rgba(30, 30, 50, 0.8); border-radius: 4px; display: none;">
+                    <!-- 模拟消息会插入到这里 -->
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>API健康检查</h2>
+            <button onclick="testHealth()">检查API健康状态</button>
+            <div id="health-result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // 设置API基础URL
+        const API_BASE = '/api/execute-python';
+
+        function updateStatus(statusId, status, message = '') {
+            const el = document.getElementById(statusId);
+            el.className = `status ${status}`;
+            el.textContent = message || status;
+        }
+
+        function showResult(resultId, content, isError = false) {
+            const el = document.getElementById(resultId);
+            el.style.display = 'block';
+            el.className = `result ${isError ? 'error' : 'success'}`;
+            el.textContent = content;
+        }
+
+        function showResultHTML(resultId, html, isError = false) {
+            const el = document.getElementById(resultId);
+            el.style.display = 'block';
+            el.className = `result ${isError ? 'error' : 'success'}`;
+            el.innerHTML = html;
+        }
+
+        async function testExecuteSimple() {
+            const code = document.getElementById('code-simple').value;
+            updateStatus('status-simple', 'running', '🔄 执行中...');
+
+            try {
+                const response = await fetch(`${API_BASE}/execute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const result = await response.json();
+                let output = `✅ 执行完成 (耗时: ${result.executionTime}ms)\n\n`;
+                output += `标准输出:\n${result.stdout || '(无)'}\n\n`;
+                if (result.stderr) output += `错误输出:\n${result.stderr}`;
+
+                showResult('result-simple', output, !result.success);
+                updateStatus('status-simple', result.success ? 'success' : 'error', 
+                    result.success ? '✅ 成功' : '❌ 失败');
+            } catch (error) {
+                showResult('result-simple', '❌ 请求失败: ' + error.message, true);
+                updateStatus('status-simple', 'error', '❌ 错误');
+            }
+        }
+
+        async function testExecuteFileGeneration() {
+            const code = document.getElementById('code-file').value;
+            updateStatus('status-file', 'running', '🔄 执行中...');
+
+            try {
+                const response = await fetch(`${API_BASE}/execute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const result = await response.json();
+                let output = `✅ 执行完成 (耗时: ${result.executionTime}ms)\n\n`;
+                output += `标准输出:\n${result.stdout || '(无)'}\n\n`;
+                
+                if (result.files && result.files.length > 0) {
+                    output += `生成的文件:\n`;
+                    result.files.forEach(file => {
+                        output += `- ${file.filename} (${file.size} bytes)\n`;
+                        output += `  下载链接: ${file.downloadUrl}\n`;
+                    });
+                }
+
+                showResult('result-file', output, !result.success);
+                updateStatus('status-file', result.success ? 'success' : 'error',
+                    result.success ? '✅ 成功' : '❌ 失败');
+            } catch (error) {
+                showResult('result-file', '❌ 请求失败: ' + error.message, true);
+                updateStatus('status-file', 'error', '❌ 错误');
+            }
+        }
+
+        async function testExecuteError() {
+            const code = document.getElementById('code-error').value;
+            updateStatus('status-error', 'running', '🔄 执行中...');
+
+            try {
+                const response = await fetch(`${API_BASE}/execute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const result = await response.json();
+                let output = `执行状态: ${result.success ? '✅ 成功' : '❌ 失败'}\n`;
+                output += `exit code: ${result.exitCode}\n`;
+                output += `耗时: ${result.executionTime}ms\n\n`;
+                
+                if (result.stdout) output += `标准输出:\n${result.stdout}\n\n`;
+                if (result.stderr) output += `错误输出:\n${result.stderr}`;
+
+                showResult('result-error', output, !result.success);
+                updateStatus('status-error', result.success ? 'success' : 'error',
+                    result.success ? '✅ 成功' : '❌ 失败 (预期行为)');
+            } catch (error) {
+                showResult('result-error', '❌ 请求失败: ' + error.message, true);
+                updateStatus('status-error', 'error', '❌ 错误');
+            }
+        }
+
+        async function testExtractCode() {
+            const message = document.getElementById('extract-message').value;
+            updateStatus('status-extract', 'running', '🔄 分析中...');
+
+            try {
+                const response = await fetch(`${API_BASE}/extract-code`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
+                const result = await response.json();
+                let output = `发现Python代码: ${result.data.hasCode ? '✅ 是' : '❌ 否'}\n\n`;
+                
+                if (result.data.codeBlocks && result.data.codeBlocks.length > 0) {
+                    output += `代码块数量: ${result.data.codeBlocks.length}\n\n`;
+                    result.data.codeBlocks.forEach((block, index) => {
+                        output += `代码块 ${index + 1}:\n${block.code}\n\n`;
+                    });
+                }
+
+                if (result.data.directive) {
+                    output += `执行指令:\n${JSON.stringify(result.data.directive, null, 2)}`;
+                }
+
+                showResult('result-extract', output);
+                updateStatus('status-extract', 'success', '✅ 完成');
+            } catch (error) {
+                showResult('result-extract', '❌ 请求失败: ' + error.message, true);
+                updateStatus('status-extract', 'error', '❌ 错误');
+            }
+        }
+
+        async function testPerformance() {
+            const code = `
+import time
+def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)
+
+start = time.time()
+result = fibonacci(30)
+elapsed = time.time() - start
+
+print(f"Fibonacci(30) = {result}")
+print(f"耗时: {elapsed:.2f} 秒")
+`;
+            updateStatus('status-performance', 'running', '🔄 执行中...');
+
+            try {
+                const response = await fetch(`${API_BASE}/execute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const result = await response.json();
+                let output = `API执行耗时: ${result.executionTime}ms\n\n`;
+                output += `Python输出:\n${result.stdout || '(无)'}`;
+
+                showResult('result-performance', output);
+                updateStatus('status-performance', 'success', '✅ 完成');
+            } catch (error) {
+                showResult('result-performance', '❌ 请求失败: ' + error.message, true);
+                updateStatus('status-performance', 'error', '❌ 错误');
+            }
+        }
+
+        async function testTimeout() {
+            const code = document.getElementById('code-timeout').value;
+            updateStatus('status-timeout', 'running', '🔄 执行中...');
+
+            try {
+                const response = await fetch(`${API_BASE}/execute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const result = await response.json();
+                let output = `执行状态: ${result.success ? '✅ 成功' : '❌ 超时/失败'}\n`;
+                output += `耗时: ${result.executionTime}ms\n\n`;
+                
+                if (result.stdout) output += `输出:\n${result.stdout}\n`;
+                if (result.stderr) output += `\n错误信息:\n${result.stderr}`;
+
+                showResult('result-timeout', output, !result.success);
+                updateStatus('status-timeout', result.success ? 'success' : 'error', 'completed');
+            } catch (error) {
+                showResult('result-timeout', '❌ 请求失败: ' + error.message, true);
+                updateStatus('status-timeout', 'error', '❌ 错误');
+            }
+        }
+
+        async function testHealth() {
+            try {
+                const response = await fetch('/api/health');
+                const result = await response.json();
+                const html = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                showResultHTML('health-result', html);
+            } catch (error) {
+                showResult('health-result', '❌ 请求失败: ' + error.message, true);
+            }
+        }
+
+        function simulateRoleMessage() {
+            const container = document.getElementById('simulated-message');
+            container.style.display = 'block';
+            
+            const messageHTML = `
+                <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 4px;">
+                    <h3>📝 编辑员生成的执行方案</h3>
+                    <p>以下是我生成的执行方案：</p>
+                    
+                    <div style="background: rgba(30, 30, 50, 0.8); padding: 12px; border-radius: 4px; margin: 10px 0;">
+                        <strong>Python代码:</strong>
+                        <pre>
+content = """# 项目执行方案
+
+## 阶段1: 需求分析
+- 明确项目目标
+- 列举核心需求
+
+## 阶段2: 设计实现
+- 技术方案设计
+- 资源配置
+
+## 阶段3: 验证完成
+- 功能测试
+- 部署上线
+"""
+
+with open('execution_plan.md', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("✅ 执行方案已生成: execution_plan.md")
+                        </pre>
+                    </div>
+                    
+                    <button onclick="location.href='/api/execute-python/execute'" style="background: rgba(76, 175, 80, 0.2); border-color: rgba(76, 175, 80, 0.4); color: #4caf50;">
+                        ▶️ 执行生成
+                    </button>
+                </div>
+            `;
+            
+            container.innerHTML = messageHTML;
+        }
+    </script>
+</body>
+</html>
