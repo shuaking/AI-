@@ -126,12 +126,20 @@ cp .env.example .env
 ### 5. 启动开发服务器
 
 #### 5.1 全栈启动
+
+**支持跨平台（Windows、macOS、Linux）：**
+
 ```bash
-# 启动Express后端 + Socket.IO服务器 + 静态前端
+# 生产环境启动
 npm start
+
+# 开发环境启动（自动热重载）
+npm run dev
 
 # 服务器将在 http://localhost:3000 运行
 ```
+
+所有npm脚本都通过`cross-env`实现了跨平台支持，无需在Windows、macOS或Linux之间修改命令，环境变量会自动按照对应系统的方式设置。
 
 #### 5.2 分开启动（可选）
 ```bash
@@ -321,7 +329,7 @@ Run the server in production mode:
 npm start
 ```
 
-This command executes the `start:prod` script (`NODE_ENV=production node server/index.js`).
+This command executes the `start:prod` script, which uses `cross-env` to ensure cross-platform compatibility with environment variables (Windows, macOS, and Linux).
 
 ## Accessing the Application
 
@@ -332,6 +340,20 @@ http://localhost:3000
 ```
 
 The application will serve the single-page UI from the `public` directory.
+
+### Cross-Platform Environment Variables
+
+This project uses `cross-env` to ensure npm scripts work correctly on Windows, macOS, and Linux. All scripts that set environment variables are automatically handled:
+
+```bash
+# Development (Windows, macOS, Linux)
+npm run dev       # Starts with NODE_ENV=development
+
+# Production (Windows, macOS, Linux)
+npm start         # Starts with NODE_ENV=production
+```
+
+No manual configuration needed! The `cross-env` package automatically detects your operating system and sets environment variables using the correct syntax for each platform.
 
 ## Configuration
 
