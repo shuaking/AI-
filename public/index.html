@@ -6311,7 +6311,11 @@ ${detailedContext}
             
             // 检查消息中是否包含Python代码，如果有则处理
             console.log('[finalizeStreamingMessage] Checking for Python code blocks...');
-            processPythonCodeInMessage(messageEl, content);
+            try {
+                processPythonCodeInMessage(messageEl, content);
+            } catch (error) {
+                console.error('[finalizeStreamingMessage] Error processing Python code:', error);
+            }
             
             console.log('[finalizeStreamingMessage] Message finalized successfully');
         }
@@ -6323,7 +6327,11 @@ ${detailedContext}
          */
         async function processPythonCodeInMessage(messageEl, content) {
             try {
-                console.log('[processPythonCodeInMessage] Processing message for Python code');
+                console.log('[processPythonCodeInMessage] Processing message for Python code', {
+                    messageElId: messageEl.id,
+                    contentLength: content.length,
+                    contentPreview: content.substring(0, 100) + '...'
+                });
                 
                 // 调用后端API提取Python代码块
                 const response = await fetch('/api/execute-python/extract-code', {
@@ -6347,6 +6355,7 @@ ${detailedContext}
                     return;
                 }
 
+                console.log('[processPythonCodeInMessage] Found Python code, adding execution panel');
                 // 添加Python代码执行面板
                 addPythonExecutionPanel(messageEl, result.data.codeBlocks, result.data.directive);
             } catch (error) {
@@ -6358,6 +6367,12 @@ ${detailedContext}
          * 添加Python代码执行面板到消息
          */
         function addPythonExecutionPanel(messageEl, codeBlocks, directive) {
+            console.log('[addPythonExecutionPanel] Starting to add Python execution panel', {
+                messageElId: messageEl.id,
+                codeBlocksCount: codeBlocks ? codeBlocks.length : 0,
+                hasDirective: !!directive
+            });
+
             const panelContainer = document.createElement('div');
             panelContainer.className = 'python-execution-panel';
             
@@ -6396,6 +6411,7 @@ ${detailedContext}
 
             // 将面板添加到消息
             messageEl.appendChild(panelContainer);
+            console.log('[addPythonExecutionPanel] Python execution panel added to message');
             
             // 添加样式
             if (!document.getElementById('python-execution-styles')) {
@@ -6532,6 +6548,7 @@ ${detailedContext}
                     }
                 `;
                 document.head.appendChild(style);
+                console.log('[addPythonExecutionPanel] Python execution styles added');
             }
         }
 
@@ -7140,9 +7157,17 @@ ${detailedContext}
                     // 在批量模式下检查是否有Python代码需要处理
                     if (type === 'role' && state.outputMode === 'batch') {
                         console.log('[addMessage] Batch mode detected, checking for Python code in role message');
-                        setTimeout(() => {
-                            processPythonCodeInMessage(messageEl, data.content);
-                        }, 100);
+                        // 确保DOM完全渲染后再处理Python代码
+                        requestAnimationFrame(() => {
+                            setTimeout(() => {
+                                try {
+                                    console.log('[addMessage] Processing Python code in batch mode');
+                                    processPythonCodeInMessage(messageEl, data.content);
+                                } catch (error) {
+                                    console.error('[addMessage] Error processing Python code in batch mode:', error);
+                                }
+                            }, 50);
+                        });
                     }
                     
                     // Non-critical operations - handle failures separately
@@ -9094,6 +9119,61 @@ ${state.messages.slice(-5).map(m =>
         console.log('📝 调试工具：使用 window.debugWorkflow.debugContext() 查看上下文信息');
         console.log('🧪 测试工具：使用 window.debugWorkflow.testPrompt("roleId") 测试Prompt生成');
         console.log('📊 质量分析：使用 window.debugWorkflow.analyzeMessage(message, "roleId") 分析消息质量');
+        console.log('🐍 Python测试：使用 window.testPythonExecution() 测试Python代码执行功能');
+
+        // 添加Python代码执行测试函数
+        window.testPythonExecution = function() {
+            console.log('[testPythonExecution] Starting Python execution test');
+            
+            // 创建测试消息
+            const testContent = `这是一个测试消息，包含Python代码：
+
+\`\`\`python
+print("Hello, Python!")
+print("2 + 3 =", 2 + 3)
+import time
+print("当前时间:", time.strftime("%Y-%m-%d %H:%M:%S"))
+\`\`\`
+
+测试完成。`;
+
+            // 创建消息元素
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message role test';
+            messageEl.id = 'test-python-msg-' + Date.now();
+            
+            messageEl.innerHTML = `
+                <div class="message-header">
+                    <div class="message-avatar" style="background: #00d4ff20; color: #00d4ff;">
+                        🧪
+                    </div>
+                    <div class="message-meta">
+                        <div class="message-name">测试角色</div>
+                        <div class="message-role">Python测试</div>
+                    </div>
+                </div>
+                <div class="message-content">${testContent}</div>
+                <div class="message-time">${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</div>
+            `;
+
+            // 添加到聊天容器
+            const container = document.getElementById('chatMessages');
+            if (container) {
+                container.appendChild(messageEl);
+                container.scrollTop = container.scrollHeight;
+                
+                // 处理Python代码
+                setTimeout(() => {
+                    processPythonCodeInMessage(messageEl, testContent);
+                }, 100);
+                
+                console.log('[testPythonExecution] Test message added to chat');
+                showNotification('Python代码执行测试已添加，请检查执行按钮', 'success');
+            } else {
+                console.error('[testPythonExecution] Chat container not found');
+                showNotification('聊天容器未找到', 'error');
+            }
+        };
     </script>
 </body>
 </html>
