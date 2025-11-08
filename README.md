@@ -19,10 +19,275 @@ Single-page AI workflow studio (v2.2) with Express + Socket.IO backend. The appl
   - **📥 Download Management**: Direct file downloads with proper MIME types
   - **🧹 Auto-Cleanup**: 24-hour file expiration with automatic cleanup
 
+## 本地开发环境设置指南
+
+### 1. 系统要求
+- **操作系统**：Windows、macOS、Linux
+- **Node.js**：v16+ (推荐 v18+)
+- **npm** 或 **yarn**：包管理器
+- **Python**：3.8+ (推荐 3.10+) - **必需用于Python代码执行**
+- **Git**：版本控制
+
+### 2. 环境变量配置
+创建 `.env` 文件（复制自 `.env.example`）：
+```
+PORT=3000
+HOST=0.0.0.0
+NODE_ENV=development
+CORS_ORIGINS=http://localhost:3000
+SOCKET_ALLOWED_ORIGINS=http://localhost:3000
+DATA_DIR=./server/data
+PUBLIC_API_URL=http://localhost:3000
+PUBLIC_SOCKET_URL=http://localhost:3000
+```
+
+### 3. 逐步安装指南
+
+#### 3.1 检查系统依赖
+提供检查脚本或命令：
+```bash
+# 检查Node.js
+node --version
+npm --version
+
+# 检查Python
+python --version
+# 或
+python3 --version
+
+# 检查Git
+git --version
+```
+
+#### 3.2 安装依赖
+
+**Windows:**
+- Node.js: 下载 https://nodejs.org/ (LTS版本)
+- Python: 下载 https://www.python.org/downloads/
+  - ⚠️ 勾选"Add Python to PATH"
+- Git: 下载 https://git-scm.com/
+
+**macOS:**
+```bash
+# 使用Homebrew
+brew install node python3 git
+
+# 或使用官方安装程序下载
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get update
+sudo apt-get install nodejs npm python3 python3-pip git
+```
+
+**Linux (Fedora/RHEL):**
+```bash
+sudo dnf install nodejs python3 python3-pip git
+```
+
+#### 3.3 验证安装
+```bash
+node --version    # 应该显示 v16 或更高
+npm --version     # 应该显示 8 或更高
+python3 --version # 应该显示 3.8 或更高
+git --version     # 应该显示 git version ...
+```
+
+### 4. 项目设置
+
+#### 4.1 克隆仓库
+```bash
+git clone https://github.com/your-username/AI-.git
+cd AI-
+```
+
+#### 4.2 安装项目依赖
+```bash
+# 安装所有依赖（包括后端和前端）
+npm install
+
+# 或分开安装：
+# 后端依赖（如果需要）
+npm install --prefix server
+
+# 前端依赖已包含在主目录
+```
+
+#### 4.3 创建环境配置
+```bash
+# 复制示例环境变量文件
+cp .env.example .env
+
+# 编辑 .env 文件（通常默认配置可用于本地开发）
+# 如果使用自定义端口或路径，修改相应配置
+```
+
+### 5. 启动开发服务器
+
+#### 5.1 全栈启动
+```bash
+# 启动Express后端 + Socket.IO服务器 + 静态前端
+npm start
+
+# 服务器将在 http://localhost:3000 运行
+```
+
+#### 5.2 分开启动（可选）
+```bash
+# 终端1：启动后端
+node server/index.js
+
+# 终端2：访问前端
+# 在浏览器中打开 http://localhost:3000
+```
+
+### 6. 验证开发环境
+
+#### 6.1 检查后端
+```bash
+# 验证API健康检查
+curl http://localhost:3000/api/health
+
+# 应该返回：
+# { "status": "ok" }
+```
+
+#### 6.2 检查前端
+- 打开浏览器访问 http://localhost:3000
+- 应该看到AI工作流工作室界面
+
+#### 6.3 检查Python执行能力
+- 在工作流中让某个角色生成Python代码
+- 点击执行按钮
+- 应该成功执行并显示结果（不是HTML错误页）
+
+#### 6.4 检查Socket.IO连接
+- 打开浏览器开发者工具（F12）
+- 查看Console标签
+- 应该看到Socket.IO连接日志
+- 示例：`[Socket.IO] Connected to server`
+
+### 7. 常见问题排查
+
+#### Q: 启动时出现 "port already in use" 错误
+A:
+- 检查3000端口是否被占用
+- 修改 `.env` 中的 PORT 为其他值（如3001）
+- 或关闭占用该端口的其他应用
+
+#### Q: Python代码执行失败，显示 "python: command not found"
+A:
+- Python没有正确安装或PATH配置有问题
+- 重新安装Python
+- Windows: 确保勾选"Add Python to PATH"
+- Linux/Mac: 可能需要用 `python3` 代替 `python`
+
+#### Q: Node模块依赖缺失
+A:
+```bash
+# 清空node_modules并重新安装
+rm -rf node_modules package-lock.json
+npm install
+```
+
+#### Q: Socket.IO连接失败
+A:
+- 检查后端是否正常运行
+- 检查 `.env` 中的Socket URLs是否正确
+- 检查浏览器控制台是否有错误信息
+- 尝试清空浏览器缓存并刷新
+
+#### Q: 前端无法访问后端API
+A:
+- 检查 `.env` 中的 CORS_ORIGINS 配置
+- 确保CORS配置包含你的前端地址
+- 重启后端服务器
+
+### 8. 开发工具建议
+
+**推荐的IDE/编辑器：**
+- Visual Studio Code (推荐)
+- WebStorm
+- Sublime Text
+- Vim/Neovim
+
+**推荐的VS Code扩展：**
+- ESLint
+- Prettier
+- Python (by Microsoft)
+- Thunder Client 或 REST Client (API测试)
+- Socket.IO Client Debug (查看Socket事件)
+
+### 9. 调试技巧
+
+#### 9.1 后端调试
+```bash
+# 启用详细日志
+DEBUG=* npm start
+
+# 或使用Node.js调试器
+node --inspect server/index.js
+```
+
+#### 9.2 前端调试
+- 打开浏览器开发者工具 (F12)
+- 查看Console标签的日志
+- 查看Network标签的API请求
+- 使用Source标签设置断点
+
+#### 9.3 Python执行调试
+- 在浏览器Console中查看Python执行错误
+- 检查 `/api/execute-python` 端点的响应
+- 查看Python错误输出信息
+
+### 10. 快速参考
+
+**常用命令：**
+```bash
+# 启动开发服务器
+npm start
+
+# 安装依赖
+npm install
+
+# 清空缓存
+npm cache clean --force
+
+# 检查Python
+python3 --version
+
+# 检查端口占用 (Linux/Mac)
+lsof -i :3000
+
+# 检查端口占用 (Windows)
+netstat -ano | findstr :3000
+```
+
+### 11. 首次开发检查清单
+
+- ☑ Node.js 已安装 (v16+)
+- ☑ Python 已安装 (3.8+)
+- ☑ npm 依赖已安装 (`npm install`)
+- ☑ `.env` 文件已创建
+- ☑ 后端启动成功 (`npm start`)
+- ☑ 前端可访问 (http://localhost:3000)
+- ☑ API健康检查通过
+- ☑ Socket.IO 已连接
+- ☑ Python执行功能可用
+
+### 12. 后续步骤
+
+- 查看 `DEVELOPER_NOTES.md` 了解项目架构
+- 查看 `README.md` 了解功能概述
+- 查看 `server/README.md` 了解后端结构
+- 查看各功能的文档说明
+
 ## Prerequisites
 
 - Node.js >= 16.0.0
 - npm or yarn
+- Python >= 3.8.0 (required for code execution)
 
 ## Installation
 
