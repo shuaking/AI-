@@ -4916,14 +4916,29 @@
             updateRoleWaiting(role, true);
             
             try {
-                // 构建增强的角色互动Prompt（包含完整上下文）
-                console.log('[requestRoleSpeak] Building enhanced prompt with context...');
-                const prompt = buildInteractivePrompt(role);
-                console.log('[requestRoleSpeak] Enhanced prompt generated:', {
-                    promptLength: prompt.length,
-                    lines: prompt.split('\n').length,
-                    preview: prompt.substring(0, 300) + '...'
-                });
+               // 构建增强的角色互动Prompt（包含完整上下文）
+               console.log('[requestRoleSpeak] Building enhanced prompt with context...');
+               console.log('[requestRoleSpeak] Message history details:', {
+                   totalMessages: state.messages?.length || 0,
+                   messageTypes: state.messages ? state.messages.map(m => m.type).slice(-10) : [],
+                   recentMessages: state.messages?.slice(-3).map(m => ({
+                       type: m.type,
+                       role: m.role?.name || m.sender,
+                       content: m.content.substring(0, 50) + '...'
+                   })) || []
+               });
+
+               const prompt = buildInteractivePrompt(role);
+               console.log('[requestRoleSpeak] Enhanced prompt generated:', {
+                   promptLength: prompt.length,
+                   lines: prompt.split('\n').length,
+                   preview: prompt.substring(0, 300) + '...'
+               });
+
+               // 详细打印完整的Prompt供调试
+               console.log('[requestRoleSpeak] ===== 完整Prompt内容 =====');
+               console.log(prompt);
+               console.log('[requestRoleSpeak] ===== Prompt结束 =====');
                 
                 // 生成角色消息
                 console.log('[requestRoleSpeak] Generating role message...');
@@ -6046,6 +6061,14 @@ ${detailedContext}
                     adapter = new LLMAdapter(state.currentPlatform, state.apiKey);
                     console.log('[generateRoleMessage] Using standard API:', state.currentPlatform);
                 }
+                
+                // 打印适配器和Prompt信息
+                console.log('[generateRoleMessage] ===== API请求详情 =====');
+                console.log('[generateRoleMessage] 适配器类型:', adapter.constructor.name);
+                console.log('[generateRoleMessage] 平台:', adapter.platform || adapter.config?.endpoint);
+                console.log('[generateRoleMessage] Prompt长度:', prompt.length);
+                console.log('[generateRoleMessage] Prompt前500字符:', prompt.substring(0, 500) + '...');
+                console.log('[generateRoleMessage] ===== API请求详情结束 =====');
                 
                 let message;
                 if (state.outputMode === 'stream') {
@@ -7990,26 +8013,31 @@ ${state.messages.slice(-5).map(m =>
             }
 
             buildRequest(prompt, isStream = false) {
-                // 简化的请求构建 - 只需要基本参数
-                const requestBody = {
-                    model: this.config.modelName,
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: this.config.temperature || 0.7,
-                    max_tokens: this.config.maxTokens || 1500
-                };
+               // 分离系统Prompt和用户Prompt，提高上下文理解能力
+               const { systemMessage, userMessage } = this.extractSystemAndUserPrompt(prompt);
 
-                if (isStream) {
-                    requestBody.stream = true;
-                }
+               const requestBody = {
+                   model: this.config.modelName,
+                   messages: [
+                       { role: 'system', content: systemMessage },
+                       { role: 'user', content: userMessage }
+                   ],
+                   temperature: this.config.temperature || 0.7,
+                   max_tokens: this.config.maxTokens || 1500
+               };
 
-                return {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.config.apiKey}`
-                    },
-                    body: JSON.stringify(requestBody)
-                };
+               if (isStream) {
+                   requestBody.stream = true;
+               }
+
+               return {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json',
+                       'Authorization': `Bearer ${this.config.apiKey}`
+                   },
+                   body: JSON.stringify(requestBody)
+               };
             }
 
             async makeRequest(requestOptions) {
@@ -8103,7 +8131,7 @@ ${state.messages.slice(-5).map(m =>
                 const enhanced = new Error(error.message);
                 enhanced.status = error.status || 'unknown';
                 enhanced.originalError = error;
-                
+
                 if (error.message.includes('CORS')) {
                     enhanced.message = `CORS跨域错误：${error.message}`;
                 } else if (error.message.includes('Network')) {
@@ -8113,8 +8141,46 @@ ${state.messages.slice(-5).map(m =>
                 } else if (error.status) {
                     enhanced.message = `API请求失败 (${error.status}): ${error.message}`;
                 }
-                
+
                 return enhanced;
+            }
+
+            extractSystemAndUserPrompt(fullPrompt) {
+                // 从完整的Prompt中分离系统消息和用户消息
+                const lines = fullPrompt.split('\n');
+                let systemLines = [];
+                let userLines = [];
+                let inUserSection = false;
+
+                for (const line of lines) {
+                    if (line.includes('请基于') || line.includes('用户Prompt') || (inUserSection && line.trim())) {
+                        inUserSection = true;
+                    }
+
+                    if (inUserSection) {
+                        userLines.push(line);
+                    } else if (line.trim()) {
+                        systemLines.push(line);
+                    }
+                }
+
+                let systemMessage = `你是一个专业的AI助手，负责在团队讨论中扮演特定角色。
+            你必须严格遵循以下指导原则：
+
+            1. **上下文理解**：充分理解前面的讨论历史、工作流背景和当前阶段
+            2. **连贯回应**：直接引用或回应前面角色说过的观点，形成逻辑连贯的对话流
+            3. **角色一致性**：始终保持分配给你的角色特征、专业立场和沟通风格
+            4. **内容质量**：避免重复已讨论的观点，提供有建设性的新见解
+            5. **决策支持**：在决策阶段提供明确的建议和理由
+
+            ${systemLines.length > 0 ? '角色信息：\n' + systemLines.join('\n') : ''}`;
+
+                const userMessage = userLines.length > 0 ? userLines.join('\n').trim() : fullPrompt;
+
+                return {
+                    systemMessage: systemMessage || '你是一个专业的AI助手，在团队讨论中扮演特定角色。必须理解历史讨论、形成连贯回应、保持角色一致性。',
+                    userMessage: userMessage || fullPrompt
+                };
             }
         }
 
@@ -8209,6 +8275,16 @@ ${state.messages.slice(-5).map(m =>
             }
 
             async callOpenAI(prompt) {
+                // 分离系统Prompt和用户Prompt
+                const { systemMessage, userMessage } = this.extractSystemAndUserPrompt(prompt);
+                
+                console.log('[LLMAdapter.callOpenAI] 请求消息结构:', {
+                    systemMessageLength: systemMessage.length,
+                    userMessageLength: userMessage.length,
+                    systemPreview: systemMessage.substring(0, 150) + '...',
+                    userPreview: userMessage.substring(0, 150) + '...'
+                });
+                
                 const response = await this.makeRequest('https://api.openai.com/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -8217,7 +8293,10 @@ ${state.messages.slice(-5).map(m =>
                     },
                     body: JSON.stringify({
                         model: 'gpt-3.5-turbo',
-                        messages: [{ role: 'user', content: prompt }],
+                        messages: [
+                            { role: 'system', content: systemMessage },
+                            { role: 'user', content: userMessage }
+                        ],
                         temperature: 0.8,
                         max_tokens: 1500
                     })
@@ -8228,6 +8307,9 @@ ${state.messages.slice(-5).map(m =>
             }
 
             async callOpenAIStream(prompt, onChunk) {
+                // 分离系统Prompt和用户Prompt
+                const { systemMessage, userMessage } = this.extractSystemAndUserPrompt(prompt);
+                
                 const response = await this.makeRequest('https://api.openai.com/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -8236,7 +8318,10 @@ ${state.messages.slice(-5).map(m =>
                     },
                     body: JSON.stringify({
                         model: 'gpt-3.5-turbo',
-                        messages: [{ role: 'user', content: prompt }],
+                        messages: [
+                            { role: 'system', content: systemMessage },
+                            { role: 'user', content: userMessage }
+                        ],
                         temperature: 0.8,
                         max_tokens: 1500,
                         stream: true
@@ -8282,25 +8367,34 @@ ${state.messages.slice(-5).map(m =>
             }
 
             async callDeepSeek(prompt) {
-                const response = await this.makeRequest('https://api.deepseek.com/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.apiKey}`
-                    },
-                    body: JSON.stringify({
-                        model: 'deepseek-chat',
-                        messages: [{ role: 'user', content: prompt }],
-                        temperature: 0.7,
-                        max_tokens: 1500
-                    })
-                });
+               // 分离系统Prompt和用户Prompt
+               const { systemMessage, userMessage } = this.extractSystemAndUserPrompt(prompt);
 
-                const data = await response.json();
-                return data.choices[0].message.content;
+               const response = await this.makeRequest('https://api.deepseek.com/chat/completions', {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json',
+                       'Authorization': `Bearer ${this.apiKey}`
+                   },
+                   body: JSON.stringify({
+                       model: 'deepseek-chat',
+                       messages: [
+                           { role: 'system', content: systemMessage },
+                           { role: 'user', content: userMessage }
+                       ],
+                       temperature: 0.7,
+                       max_tokens: 1500
+                   })
+               });
+
+               const data = await response.json();
+               return data.choices[0].message.content;
             }
 
             async callDeepSeekStream(prompt, onChunk) {
+                // 分离系统Prompt和用户Prompt
+                const { systemMessage, userMessage } = this.extractSystemAndUserPrompt(prompt);
+                
                 const response = await this.makeRequest('https://api.deepseek.com/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -8309,7 +8403,10 @@ ${state.messages.slice(-5).map(m =>
                     },
                     body: JSON.stringify({
                         model: 'deepseek-chat',
-                        messages: [{ role: 'user', content: prompt }],
+                        messages: [
+                            { role: 'system', content: systemMessage },
+                            { role: 'user', content: userMessage }
+                        ],
                         temperature: 0.7,
                         max_tokens: 1500,
                         stream: true
@@ -8355,28 +8452,40 @@ ${state.messages.slice(-5).map(m =>
             }
 
             async callGemini(prompt) {
-                const response = await this.makeRequest(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${this.apiKey}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }]
-                    })
-                });
+               // 分离系统Prompt和用户Prompt
+               const { systemMessage, userMessage } = this.extractSystemAndUserPrompt(prompt);
 
-                const data = await response.json();
-                return data.candidates[0].content.parts[0].text;
+               // Gemini使用系统指令方式
+               const enhancedPrompt = `${systemMessage}\n\n用户请求：\n${userMessage}`;
+
+               const response = await this.makeRequest(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${this.apiKey}`, {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json'
+                   },
+                   body: JSON.stringify({
+                       contents: [{ parts: [{ text: enhancedPrompt }] }]
+                   })
+               });
+
+               const data = await response.json();
+               return data.candidates[0].content.parts[0].text;
             }
 
             async callGeminiStream(prompt, onChunk) {
+                // 分离系统Prompt和用户Prompt
+                const { systemMessage, userMessage } = this.extractSystemAndUserPrompt(prompt);
+                
+                // Gemini使用系统指令方式
+                const enhancedPrompt = `${systemMessage}\n\n用户请求：\n${userMessage}`;
+                
                 const response = await this.makeRequest(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:streamGenerateContent?key=${this.apiKey}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }]
+                        contents: [{ parts: [{ text: enhancedPrompt }] }]
                     })
                 });
 
@@ -8413,14 +8522,64 @@ ${state.messages.slice(-5).map(m =>
             }
 
             cleanStreamContent(content) {
-                if (!content) return '';
-                
-                return content
-                    .replace(/\\n/g, '\n')
-                    .replace(/\\"/g, '"')
-                    .replace(/\\t/g, '\t')
-                    .replace(/\\r/g, '\r')
-                    .trim();
+               if (!content) return '';
+
+               return content
+                   .replace(/\\n/g, '\n')
+                   .replace(/\\"/g, '"')
+                   .replace(/\\t/g, '\t')
+                   .replace(/\\r/g, '\r')
+                   .trim();
+            }
+
+            extractSystemAndUserPrompt(fullPrompt) {
+               // 从完整的Prompt中分离系统消息和用户消息
+               // 系统消息通常在前面，用户消息在"请基于"开头的最后部分
+
+               const lines = fullPrompt.split('\n');
+               let systemLines = [];
+               let userLines = [];
+               let inUserSection = false;
+
+               for (const line of lines) {
+                   // 检查是否进入用户请求部分
+                   if (line.includes('请基于') || line.includes('用户Prompt') || (inUserSection && line.trim())) {
+                       inUserSection = true;
+                   }
+
+                   if (inUserSection) {
+                       userLines.push(line);
+                   } else if (line.trim()) {
+                       systemLines.push(line);
+                   }
+               }
+
+               // 生成系统消息 - 专注于角色特征、Prompt工程指导
+               let systemMessage = `你是一个专业的AI助手，负责在团队讨论中扮演特定角色。
+            你必须严格遵循以下指导原则：
+
+            1. **上下文理解**：充分理解前面的讨论历史、工作流背景和当前阶段
+            2. **连贯回应**：直接引用或回应前面角色说过的观点，形成逻辑连贯的对话流
+            3. **角色一致性**：始终保持分配给你的角色特征、专业立场和沟通风格
+            4. **内容质量**：避免重复已讨论的观点，提供有建设性的新见解
+            5. **决策支持**：在决策阶段提供明确的建议和理由
+
+            ${systemLines.length > 0 ? '角色信息：\n' + systemLines.join('\n') : ''}`;
+
+               // 用户消息就是请基于...的最后部分
+               const userMessage = userLines.length > 0 ? userLines.join('\n').trim() : fullPrompt;
+
+               console.log('[LLMAdapter] Prompt separation:', {
+                   systemLength: systemMessage.length,
+                   userLength: userMessage.length,
+                   systemPreview: systemMessage.substring(0, 100) + '...',
+                   userPreview: userMessage.substring(0, 100) + '...'
+               });
+
+               return {
+                   systemMessage: systemMessage || '你是一个专业的AI助手，在团队讨论中扮演特定角色。必须理解历史讨论、形成连贯回应、保持角色一致性。',
+                   userMessage: userMessage || fullPrompt
+               };
             }
         }
 
