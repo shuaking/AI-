@@ -4,15 +4,20 @@ Single-page AI workflow studio (v2.2) with Express + Socket.IO backend. The appl
 
 ## Features
 
-- **Workflow Templates**: Pre-built and custom workflow templates
-- **Role Management**: Define and manage AI agent roles
-- **Prompt Library**: Store and manage reusable prompts and variables
-- **LLM Interface Configuration**: Configure standard and custom LLM APIs with streaming support
-- **Collaborative Workspace**: Chat-style interface with stage progress, message flow, and role mentions
-- **Real-time Communication**: Socket.IO powered real-time updates
-- **Data Persistence**: REST API backend with JSON storage for workflows, roles, prompts, and settings
-- **Offline Support**: Automatic fallback to localStorage cache when offline or server unavailable
-- **Python Code Execution**: Secure sandbox for executing Python code with file generation and download capabilities
+- **🔄 Workflow Templates**: Pre-built and custom workflow templates with stage-based execution
+- **👥 Role Management**: Define and manage AI agent roles with specialized capabilities
+- **📝 Prompt Library**: Store and manage reusable prompts and variables
+- **🤖 LLM Interface Configuration**: Configure standard and custom LLM APIs with streaming support
+- **💬 Collaborative Workspace**: Chat-style interface with stage progress, message flow, and role mentions
+- **⚡ Real-time Communication**: Socket.IO powered real-time updates across multiple clients
+- **💾 Data Persistence**: REST API backend with JSON storage for workflows, roles, prompts, and settings
+- **🌐 Offline Support**: Automatic fallback to localStorage cache when offline or server unavailable
+- **🐍 Python Code Execution Sandbox**: Secure environment for executing Python code with file generation and download capabilities
+  - **📁 File Generation**: Create Markdown, CSV, JSON, HTML documents and more
+  - **🔒 Security**: 30s timeout, 1MB output limits, process isolation
+  - **🤖 Auto-Detection**: Automatically identifies Python code blocks in role messages
+  - **📥 Download Management**: Direct file downloads with proper MIME types
+  - **🧹 Auto-Cleanup**: 24-hour file expiration with automatic cleanup
 
 ## Prerequisites
 
@@ -97,24 +102,24 @@ CORS_ORIGINS="https://example.com,https://app.example.com" npm start
 │   │   ├── roles.json        # Role definitions
 │   │   ├── prompts.json      # Prompt templates
 │   │   ├── settings.json     # User settings and variables
-│   │   └── python-output/    # Generated files from Python execution
+│   │   └── python-output/    # 🐍 Generated files from Python execution
 │   ├── routes/               # REST API routes
 │   │   ├── workflows.js      # Workflow CRUD endpoints
 │   │   ├── roles.js          # Role CRUD endpoints
 │   │   ├── prompts.js        # Prompt CRUD endpoints
 │   │   ├── settings.js       # Settings CRUD endpoints
-│   │   └── pythonExecution.js # Python code execution API
+│   │   └── pythonExecution.js # 🐍 Python code execution API
 │   ├── utils/                # Utility modules
 │   │   ├── jsonStore.js      # JSON file storage with caching
 │   │   ├── validators.js     # Data validation
-│   │   ├── pythonExecutor.js # Python code execution engine
-│   │   └── fileManager.js    # File management system
+│   │   ├── pythonExecutor.js # 🐍 Python code execution engine
+│   │   └── fileManager.js    # 🐍 File management system
 │   └── middleware/           # Express middleware
 │       ├── errorHandler.js   # Error handling
 │       └── requestLogger.js  # Request logging
 ├── public/
-│   ├── index.html            # Single-page application UI
-│   ├── test-python-execution.html # Python execution test page
+│   ├── index.html            # Single-page application UI with Python execution integration
+│   ├── test-python-execution.html # 🐍 Python execution test page
 │   └── js/
 │       ├── apiClient.js      # API client with offline support
 │       └── socketClient.js   # Socket.IO client
@@ -123,9 +128,16 @@ CORS_ORIGINS="https://example.com,https://app.example.com" npm start
 ├── README.md                 # This file
 ├── DEVELOPER_NOTES.md        # Technical documentation
 ├── JSON_STORAGE_API_SUMMARY.md  # API documentation
-├── PYTHON_EXECUTION_SANDBOX.md  # Python sandbox feature documentation
-└── PYTHON_SANDBOX_IMPLEMENTATION.md  # Python sandbox implementation details
+├── PYTHON_EXECUTION_SANDBOX.md  # 🐍 Python sandbox feature documentation
+└── PYTHON_SANDBOX_IMPLEMENTATION.md  # 🐍 Python sandbox implementation details
 ```
+
+**🐍 Python Execution Components**:
+- `pythonExecutor.js`: Core execution engine with timeout and security
+- `fileManager.js`: File lifecycle management with auto-cleanup
+- `pythonExecution.js`: REST API endpoints for code execution and file downloads
+- `test-python-execution.html`: Comprehensive testing interface
+- Integration points in `index.html` for automatic code detection and UI panels
 
 ## API Endpoints
 
@@ -167,191 +179,376 @@ The application provides RESTful API endpoints for managing workflows, roles, pr
 - `PUT /api/settings/variables` - Update global variables
 - `PUT /api/settings/api-configs` - Update custom API configurations
 
+### 🐍 Python Execution Endpoints
+
+#### Execute Python Code
+```
+POST /api/execute-python/execute
+```
+Execute Python code with security constraints and file generation support.
+
+#### Download Generated File
+```
+GET /api/execute-python/download/:fileId
+```
+Download a file generated by Python code execution.
+
+#### Get File Information
+```
+GET /api/execute-python/file/:fileId
+```
+Retrieve metadata about a generated file.
+
+#### Extract Code from Message
+```
+POST /api/execute-python/extract-code
+```
+Extract and identify Python code blocks from text messages.
+
+#### Get Execution Statistics
+```
+GET /api/execute-python/stats
+```
+Get statistics about generated files and system usage.
+
+#### Delete File
+```
+DELETE /api/execute-python/file/:fileId
+```
+Manually delete a generated file before auto-cleanup.
+
 See `server/README.md` for detailed API documentation.
 
-## Python Code Execution Sandbox
+## Python Code Execution Sandbox 🐍
 
 The application includes a secure Python code execution sandbox that allows AI roles (especially editors) to generate and execute Python code, create files, and provide downloadable outputs.
 
-### Overview
+### 🌟 Core Features
 
-The Python execution sandbox provides:
-- **Secure Code Execution**: Safe execution environment with timeout and output limits
-- **File Generation**: Create and download files (Markdown, CSV, JSON, etc.)
-- **Automatic Detection**: Code blocks are automatically detected in role messages
-- **User-Friendly Interface**: Execute code with a single click in the UI
-- **Real-time Feedback**: View execution results, errors, and execution time
+- **🔒 Secure Code Execution**: Safe execution environment with timeout (30s) and output limits (1MB)
+- **📁 File Generation**: Create and download files (Markdown, CSV, JSON, HTML, etc.)
+- **🤖 Automatic Detection**: Code blocks are automatically detected in role messages
+- **🎯 User-Friendly Interface**: Execute code with a single click in the UI
+- **⚡ Real-time Feedback**: View execution results, errors, and execution time
+- **🔄 Process Isolation**: Each execution runs in a separate Python process
+- **🧹 Auto Cleanup**: Generated files automatically expire after 24 hours
 
-### Use Cases
+### 🎯 Application Scenarios
 
-- **Document Generation**: Editors can generate Markdown execution plans and project documents
-- **Data Export**: Create CSV, JSON, or other data format files
-- **Report Creation**: Generate formatted reports with data analysis
-- **Script Execution**: Run data processing or transformation scripts
-- **File Conversion**: Convert between different file formats
+#### Scenario 1: Editor Generates Project Documents
+**Perfect for**: Project planning, requirement documents, meeting records, execution plans
 
-### How to Use
+When editors complete content writing, they can execute Python scripts to automatically generate formatted MD documents that users can directly download.
 
-#### 1. Role Generates Python Code
+**Example Workflow**:
+1. Editor role writes content about project phases
+2. Python script formats and structures the content
+3. Professional Markdown document is generated
+4. User downloads the ready-to-use document
+
+#### Scenario 2: Data Analysis & Export
+**Perfect for**: Data statistics, report generation, data export, team analytics
+
+Team-collected data can be analyzed and formatted through Python scripts, supporting exports to CSV, JSON, and other formats.
+
+**Example Workflow**:
+1. Collect task completion data from team members
+2. Python script analyzes and processes the data
+3. Generate comprehensive CSV reports and JSON summaries
+4. Download formatted reports for stakeholder review
+
+#### Scenario 3: Code Examples and Script Generation
+**Perfect for**: Code validation, tool scripts, development examples, automation scripts
+
+Developer roles can generate executable code examples that users can test and download as functional scripts.
+
+**Example Workflow**:
+1. Developer role creates utility scripts
+2. User can execute to verify functionality
+3. Download working scripts for local use
+4. Modify and adapt for specific needs
+
+### 📚 Usage Tutorial (Layered Structure)
+
+#### 🚀 Quick Start (3 Steps)
+
+```
+📝 Write Code → ▶️ Execute → 📥 Download
+```
+
+1. **Role generates Python code** in standard code blocks
+2. **Click Execute button** that appears below the message
+3. **Download generated files** from the results panel
+
+#### 📖 Detailed Workflow
+
+**Step 1: Role Generates Python Code** 
 
 AI roles can include Python code in their messages using standard Markdown code blocks:
 
-````markdown
 ```python
-# Example: Generate a project plan document
-content = """# Project Execution Plan
+# Code format requirement: ```python ... ```
+content = """# Project Plan
 
-## Phase 1: Analysis
-- Define objectives
-- List requirements
+## Phase 1
+- Requirements analysis
+- Solution design
 
-## Phase 2: Implementation
-- Design solution
-- Allocate resources
+## Phase 2  
+- Development implementation
+- Testing and validation
 """
 
 with open('project_plan.md', 'w', encoding='utf-8') as f:
     f.write(content)
 
-print("✅ Project plan generated: project_plan.md")
+print("✅ Document generated: project_plan.md")
 ```
-````
 
-#### 2. Execute Code in the UI
+**Step 2: Frontend Recognition and Execution**
 
 When a role message contains Python code:
-1. An execution panel appears automatically below the message
-2. The code is displayed with syntax highlighting
-3. Click the **"Execute"** button to run the code
-4. Click the **"Copy"** button to copy code to clipboard
+1. **Automatic Detection**: System automatically identifies ```python code blocks
+2. **Execution Panel**: Appears below the message containing:
+   - 🟢 **Execute Button**: Triggers code execution
+   - 📋 **Copy Button**: Copies code to clipboard
+   - ⭐ **Favorite Button**: Saves code snippet for later use
+3. **Visual Layout**: 
+   ```
+   ┌─────────────────────────────────────┐
+   │        Python Code Block            │
+   │    [syntax-highlighted code]        │
+   └─────────────────────────────────────┘
+   ┌─────────────────────────────────────┐
+   │ [▶️ Execute] [📋 Copy] [⭐ Favorite] │
+   └─────────────────────────────────────┘
+   ```
 
-#### 3. View Results
+**Step 3: View Execution Results**
 
-After execution, the panel displays:
-- **Standard Output**: Console output from the code
-- **Error Messages**: Any errors that occurred
-- **Execution Time**: How long the code took to run
-- **Generated Files**: List of files created with download links
+After execution, the results panel displays:
 
-#### 4. Download Files
-
-Click the download link next to any generated file to save it to your computer. Files are automatically named and assigned the correct MIME type.
-
-### Code Format Requirements
-
-#### Standard Code Block
-````markdown
-```python
-print("Hello, World!")
 ```
-````
+┌─────────────────────────────────────────────────────┐
+│ 🟢 Execution Status: Success                         │
+│ ⏱️  Execution Time: 0.234s                          │
+│                                                     │
+│ 📤 Standard Output:                                 │
+│ ✅ Document generated: project_plan.md               │
+│                                                     │
+│ 📁 Generated Files:                                  │
+│ 📄 project_plan.md [📥 Download] (1.2KB)            │
+└─────────────────────────────────────────────────────┘
+```
 
-#### With File Generation
-````python
+**Components**:
+- **🟢 Execution Status**: ✅ Success or ❌ Failed
+- **📤 Output Log**: Standard output (stdout)
+- **⚠️ Error Information**: Any errors and warnings
+- **⏱️ Execution Time**: Code running duration
+- **📁 File List**: All generated files with download links
+
+**Step 4: Download Files**
+
+In the generated files list:
+1. **Locate target file** in the file list
+2. **Click filename or download button** to download
+3. **Supported formats**: MD, TXT, CSV, JSON, PDF, HTML, etc.
+4. **Visual Layout**:
+   ```
+   📁 Generated Files (3 files)
+   ┌─────────────────────────────────────┐
+   │ 📄 plan.md        [📥 Download] 2.1KB │
+   │ 📊 data.csv       [📥 Download] 856B  │
+   │ 📋 config.json    [📥 Download] 1.3KB │
+   └─────────────────────────────────────┘
+   ```
+
+#### 💡 Common Code Examples
+
+**Example 1: Generate Markdown Document**
 ```python
-# Generate a CSV file
+# Generate project planning document
+content = """# AI Workflow Studio - Project Planning
+
+## Project Overview
+- Version: 2.2
+- Team: 5 developers
+- Duration: 8 weeks
+
+## Feature List
+- ✅ Workflow templates
+- ✅ Role management
+- ✅ Python execution sandbox
+- 🔄 Real-time collaboration
+"""
+
+with open('planning.md', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("✅ Planning document generated")
+```
+
+**Example 2: Export to CSV**
+```python
 import csv
 
 data = [
-    ['Name', 'Department', 'Salary'],
-    ['Alice', 'Engineering', '15000'],
-    ['Bob', 'Marketing', '12000']
+    ['Task', 'Status', 'Priority', 'Assignee'],
+    ['Feature 1', 'In Progress', 'High', 'Alice'],
+    ['Feature 2', 'To Start', 'Medium', 'Bob'],
+    ['Bug Fix', 'Completed', 'High', 'Charlie'],
 ]
 
-with open('employees.csv', 'w', encoding='utf-8', newline='') as f:
+with open('tasks.csv', 'w', newline='', encoding='utf-8') as f:
     writer = csv.writer(f)
     writer.writerows(data)
 
-print("✅ CSV file generated: employees.csv")
+print("✅ CSV file generated with", len(data)-1, "tasks")
 ```
-````
 
-### Example: Editor Generating Markdown Document
-
-Here's a complete example of an editor role generating an execution plan:
-
-````python
+**Example 3: Generate JSON Data**
 ```python
-# Editor generates a comprehensive project execution plan
-
-plan_content = """# Software Development Project Plan
-
-## 1. Project Overview
-**Project Name**: AI Workflow Studio Enhancement  
-**Duration**: 8 weeks  
-**Team Size**: 5 developers
-
-## 2. Phase 1: Requirements Analysis (Week 1-2)
-### Objectives
-- Gather stakeholder requirements
-- Define functional specifications
-- Create user stories
-
-### Deliverables
-- Requirements document
-- User story backlog
-- Initial wireframes
-
-## 3. Phase 2: Design (Week 3-4)
-### Objectives
-- System architecture design
-- Database schema design
-- UI/UX design
-
-### Deliverables
-- Architecture diagram
-- Database schema
-- High-fidelity mockups
-
-## 4. Phase 3: Implementation (Week 5-6)
-### Objectives
-- Core feature development
-- Integration with existing systems
-- Unit testing
-
-### Deliverables
-- Working prototype
-- Unit test coverage report
-- API documentation
-
-## 5. Phase 4: Testing & Deployment (Week 7-8)
-### Objectives
-- Integration testing
-- User acceptance testing
-- Production deployment
-
-### Deliverables
-- Test reports
-- Deployment guide
-- User documentation
-
-## 6. Risk Management
-- **Technical Risks**: Complexity of AI integration
-- **Schedule Risks**: Tight timeline
-- **Resource Risks**: Limited team size
-
-## 7. Success Metrics
-- All features implemented and tested
-- 90% test coverage
-- Zero critical bugs in production
-- Positive user feedback
-
----
-*Document generated on {date}*
-"""
-
+import json
 import datetime
-current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-final_content = plan_content.format(date=current_date)
 
-# Save to file
-with open('execution_plan.md', 'w', encoding='utf-8') as f:
-    f.write(final_content)
+project_data = {
+    'project': 'AI Workflow Studio',
+    'version': '2.2',
+    'last_updated': datetime.datetime.now().isoformat(),
+    'features': [
+        {'name': 'Workflow Templates', 'status': 'complete'},
+        {'name': 'Role Management', 'status': 'complete'},
+        {'name': 'Python Sandbox', 'status': 'complete'},
+        {'name': 'Real-time Sync', 'status': 'in_progress'}
+    ],
+    'team': {
+        'size': 5,
+        'lead': 'Project Manager',
+        'developers': 4
+    }
+}
 
-print("✅ Execution plan generated successfully!")
-print(f"📄 File: execution_plan.md ({len(final_content)} bytes)")
+with open('project.json', 'w', encoding='utf-8') as f:
+    json.dump(project_data, f, ensure_ascii=False, indent=2)
+
+print("✅ Project data exported to JSON")
 ```
-````
+
+### 🎨 Visual Workflow & UI Layout
+
+#### Complete Execution Workflow Diagram
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   AI Role       │    │   Frontend      │    │   Backend       │
+│                 │    │                 │    │                 │
+│ 📝 Generates    │───▶│ 🤖 Auto-Detect │───▶│ 🔒 Execute      │
+│ Python Code     │    │ Code Blocks     │    │ in Sandbox      │
+│ in ```python``` │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│                 │    │ 📋 Show UI      │    │ 📁 Generate     │
+│ ✅ Print Output │    │ Execution Panel │    │ Files           │
+│ & Success Msg   │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                       │
+                                                       ▼
+                                              ┌─────────────────┐
+                                              │ 📥 Provide      │
+                                              │ Download Links  │
+                                              │ & Results       │
+                                              └─────────────────┘
+```
+
+#### UI Component Layout
+
+**Message with Python Code**:
+```
+┌─────────────────────────────────────────────────────────┐
+│ 🤖 Editor Role                                           │
+│                                                         │
+│ I'll generate a project plan document for you:         │
+│                                                         │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ ```python                                           │ │
+│ │ # Generate project plan                              │ │
+│ │ content = """# Project Plan..."""                   │ │
+│ │ with open('plan.md', 'w') as f:                     │ │
+│ │     f.write(content)                                │ │
+│ │ print("✅ Plan generated")                          │ │
+│ │ ```                                                 │ │
+│ └─────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ 🐍 Python Execution Panel                                │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ [▶️ Execute] [📋 Copy] [⭐ Favorite] [🔄 Reset]     │ │
+│ └─────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+```
+
+**After Execution - Results Panel**:
+```
+┌─────────────────────────────────────────────────────────┐
+│ 🟢 Execution Status: Success (0.234s)                    │
+│                                                         │
+│ 📤 Standard Output:                                     │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ ✅ Plan generated                                    │ │
+│ │ 📄 File: plan.md (1,247 bytes)                      │ │
+│ └─────────────────────────────────────────────────────┘ │
+│                                                         │
+│ 📁 Generated Files (1 file):                            │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ 📄 plan.md        [📥 Download] 1.2KB  2024-01-15  │ │
+│ │ [🗑️ Delete] [👁️ Preview] [📋 Copy Path]           │ │
+│ └─────────────────────────────────────────────────────┘ │
+│                                                         │
+│ ⚡ Performance: CPU 12% | Memory 8MB                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### 4-Step User Journey
+
+```
+Step 1: 📝 Code Generation           Step 2: ▶️ Execution
+┌─────────────────────┐            ┌─────────────────────┐
+│ Role writes Python  │            │ User clicks         │
+│ code in message     │───────────▶│ Execute button      │
+│ ```python...```    │            │                     │
+└─────────────────────┘            └─────────────────────┘
+
+           ↓                                   ↓
+Step 3: 📊 View Results               Step 4: 📥 Download
+┌─────────────────────┐            ┌─────────────────────┐
+│ System shows        │            │ User downloads      │
+│ execution results   │───────────▶│ generated files     │
+│ and file list       │            │                     │
+└─────────────────────┘            └─────────────────────┘
+```
+
+#### Icon Legend
+
+| Icon | Meaning | Context |
+|------|---------|---------|
+| 🐍 | Python/Code Block | Code identification |
+| ▶️ | Execute | Run code button |
+| 📋 | Copy | Copy to clipboard |
+| ⭐ | Favorite | Save code snippet |
+| 🟢 | Success | Successful execution |
+| ❌ | Error | Failed execution |
+| ⏱️ | Time | Execution duration |
+| 📤 | Output | Standard output |
+| 📁 | Files | File list/management |
+| 📥 | Download | Download file |
+| 🗑️ | Delete | Remove file |
+| 🔒 | Security | Sandbox protection |
+| ⚡ | Performance | Speed/resources |
 
 ### API Reference
 
@@ -466,43 +663,28 @@ print(f"📄 File: execution_plan.md ({len(final_content)} bytes)")
 }
 ```
 
-### Security Features
+### 🔒 Security Features & Limitations
 
-The Python execution sandbox implements multiple security measures:
+#### Security Measures
 
-#### 1. Timeout Protection (30 seconds)
-- Prevents infinite loops and long-running processes
-- Automatically terminates processes that exceed the time limit
-- Configurable via environment variables
+**🛡️ Execution Protection**
+- **⏱️ Timeout Protection (30 seconds)**: Prevents infinite loops and long-running processes
+- **📊 Output Limitation (1MB)**: Prevents memory overflow from excessive output
+- **🔄 Process Isolation**: Each execution runs in a separate Python process
+- **📁 File System Isolation**: Generated files stored in dedicated directory with unique IDs
+- **🧹 Automatic Cleanup**: Files older than 24 hours are automatically deleted
+- **⚠️ Error Containment**: All errors caught and returned safely
 
-#### 2. Output Limitation (1MB)
-- Prevents memory overflow from excessive output
-- Automatically truncates output that exceeds the limit
-- Protects server resources
+#### Configuration Limits
 
-#### 3. Process Isolation
-- Each execution runs in a separate Python process
-- Uses Node.js `child_process` for isolation
-- Processes are cleaned up after completion
+```bash
+# Default security limits (configurable via environment variables)
+PYTHON_TIMEOUT=30000          # 30 seconds execution timeout
+PYTHON_MAX_OUTPUT=1048576     # 1MB output limit
+PYTHON_OUTPUT_DIR=./data/python-output  # Isolated output directory
+```
 
-#### 4. File System Isolation
-- Generated files are stored in a dedicated directory
-- Files use unique IDs to prevent conflicts
-- Cannot access or modify system files
-
-#### 5. Automatic Cleanup
-- Files older than 24 hours are automatically deleted
-- Runs every hour to free up disk space
-- Prevents disk space exhaustion
-
-#### 6. Error Containment
-- All errors are caught and returned safely
-- Failed executions don't crash the server
-- Detailed error messages for debugging
-
-### Supported File Formats
-
-The sandbox can generate and serve files in various formats:
+#### Supported File Formats
 
 | Format | Extension | MIME Type | Use Case |
 |--------|-----------|-----------|----------|
@@ -515,61 +697,91 @@ The sandbox can generate and serve files in various formats:
 | JavaScript | `.js` | `application/javascript` | Code files |
 | XML | `.xml` | `application/xml` | Data interchange |
 
-### Troubleshooting
+### 🆘 Troubleshooting & FAQ
 
-#### Code Doesn't Execute
+#### **Q: Code doesn't have an execute button?**
+**A: Check these items:**
+1. ✅ Verify code format is exactly ````python ... ````
+2. 🔍 Check browser console for JavaScript errors (F12)
+3. 🎯 Ensure message is from a role (not user message)
+4. 🔄 Clear browser cache and reload the page
 
-**Symptoms**: No execution panel appears or execution button doesn't work
+#### **Q: Execution failed?**
+**A: Follow these steps:**
+1. 📋 Review error information in the results panel
+2. 🔍 Check code syntax for typos or missing imports
+3. 📁 Verify file write paths are valid
+4. ⚡ Ensure code completes within 30-second timeout
 
-**Solutions**:
-1. Check that Python is installed: `python3 --version`
-2. Verify code block format uses proper Markdown syntax
-3. Check browser console for JavaScript errors
-4. Ensure server is running: visit `/api/health`
+#### **Q: Can't download generated files?**
+**A: Try these solutions:**
+1. 👀 Check if files appear in the file list
+2. 📊 Verify success message in stdout output
+3. 🔧 Check server has write permissions: `ls -la server/data/python-output/`
+4. 💾 Check browser download history
 
-#### Files Can't Be Downloaded
+#### **Q: Python execution is slow?**
+**A: Optimize your code:**
+1. 🚀 Profile code to find bottlenecks
+2. 📊 Reduce data processing size
+3. ⚡ Avoid heavy I/O operations
+4. 🔄 Break large operations into smaller chunks
 
-**Symptoms**: Download link doesn't work or returns 404
+#### **Q: Getting timeout errors?**
+**A: Time management tips:**
+1. ⏱️ Optimize algorithms for speed
+2. 🔄 Process data in smaller batches
+3. 🚫 Avoid infinite loops or blocking operations
+4. ⚙️ Consider increasing timeout (requires server config)
 
-**Solutions**:
-1. Verify file was actually generated (check stdout for confirmation)
-2. Check that the file ID is correct
-3. Verify server has write permissions to the output directory
-4. Check server logs for file system errors
+#### **Q: Permission denied errors?**
+**A: Check system permissions:**
+1. 🔐 Verify server process has write permissions
+2. 📁 Ensure output directory exists and is writable
+3. 💾 Check available disk space: `df -h`
+4. 👤 Review server user permissions
 
-#### Execution Timeout
+#### **Q: Module import errors?**
+**A: Python environment checks:**
+1. 🐍 Verify Python 3 is installed: `python3 --version`
+2. 📦 Install required packages on server
+3. 🔧 Use only standard library modules for compatibility
+4. 🌐 Check Python version compatibility
 
-**Symptoms**: Code execution stops after 30 seconds
+### 🧪 Testing
 
-**Solutions**:
-1. Optimize your code to run faster
-2. Break large operations into smaller chunks
-3. Avoid infinite loops or blocking operations
-4. Consider increasing timeout (requires server configuration)
+A comprehensive test page is available at:
+```
+http://localhost:3000/test-python-execution.html
+```
 
-#### Permission Errors
+**Test Features**:
+- **🚀 Basic Execution**: Test simple Python code
+- **📁 File Generation**: Test file creation and download
+- **⚠️ Error Handling**: Test error capture and display
+- **🔍 Code Extraction**: Test code block detection
+- **⚡ Performance**: Test execution speed
+- **⏱️ Timeout Protection**: Test timeout handling
 
-**Symptoms**: "Permission denied" errors when creating files
+### 📋 Best Practices
 
-**Solutions**:
-1. Check server process has write permissions
-2. Verify output directory exists and is writable
-3. Check file system disk space
-4. Review server user permissions
+#### For AI Roles
+1. **📤 Clear Output**: Always print confirmation messages when files are generated
+2. **⚠️ Error Handling**: Use try-except blocks for robust code
+3. **📝 File Naming**: Use descriptive file names
+4. **📖 Documentation**: Add comments to explain complex logic
+5. **✅ Validation**: Validate inputs before processing
 
-#### Import Errors
+#### For Users
+1. **👀 Review Code**: Always review code before executing
+2. **📊 Check Results**: Verify stdout/stderr for any issues
+3. **📥 Download Files**: Download important files immediately
+4. **🧹 Clean Up**: Delete unnecessary files to save space
+5. **🐛 Report Issues**: Check logs if something goes wrong
 
-**Symptoms**: "ModuleNotFoundError" when executing code
+### ⚙️ Configuration
 
-**Solutions**:
-1. Install required Python packages on the server
-2. Use only standard library modules
-3. Check Python version compatibility
-4. Verify virtual environment is activated (if used)
-
-### Configuration
-
-You can configure the Python sandbox using environment variables:
+Configure the Python sandbox using environment variables:
 
 ```bash
 # Python executable path (default: python3)
@@ -585,47 +797,14 @@ PYTHON_MAX_OUTPUT=1048576
 PYTHON_OUTPUT_DIR=/path/to/output
 ```
 
-### Testing
+### 🚧 Limitations
 
-A comprehensive test page is available at:
-```
-http://localhost:3000/public/test-python-execution.html
-```
-
-The test page includes:
-- **Basic Execution**: Test simple Python code
-- **File Generation**: Test file creation and download
-- **Error Handling**: Test error capture and display
-- **Code Extraction**: Test code block detection
-- **Performance**: Test execution speed
-- **Timeout Protection**: Test timeout handling
-
-### Best Practices
-
-#### For AI Roles
-
-1. **Clear Output**: Always print confirmation messages when files are generated
-2. **Error Handling**: Use try-except blocks for robust code
-3. **File Naming**: Use descriptive file names
-4. **Documentation**: Add comments to explain complex logic
-5. **Validation**: Validate inputs before processing
-
-#### For Users
-
-1. **Review Code**: Always review code before executing
-2. **Check Results**: Verify stdout/stderr for any issues
-3. **Download Files**: Download important files immediately
-4. **Clean Up**: Delete unnecessary files to save space
-5. **Report Issues**: Check logs if something goes wrong
-
-### Limitations
-
-- **Python Version**: Uses system default Python 3.x
-- **Libraries**: Only system-installed packages available
-- **File System**: Cannot modify files outside output directory
-- **Network**: Internet access depends on system configuration
-- **Execution Time**: Maximum 30 seconds per execution
-- **Output Size**: Maximum 1MB combined stdout/stderr
+- **🐍 Python Version**: Uses system default Python 3.x
+- **📦 Libraries**: Only system-installed packages available
+- **📁 File System**: Cannot modify files outside output directory
+- **🌐 Network**: Internet access depends on system configuration
+- **⏱️ Execution Time**: Maximum 30 seconds per execution
+- **📊 Output Size**: Maximum 1MB combined stdout/stderr
 
 ### Advanced Usage
 
