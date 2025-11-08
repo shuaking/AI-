@@ -72,6 +72,38 @@ app.use('/api/prompts', createPromptsRouter(jsonStore));
 app.use('/api/settings', createSettingsRouter(jsonStore));
 app.use('/api/execute-python', createPythonExecutionRouter(jsonStore, dataDir));
 
+// 404 handler for API routes - return JSON instead of HTML
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Not Found',
+    message: `API endpoint ${req.method} ${req.originalUrl} not found`,
+    availableEndpoints: [
+      'GET /api/health',
+      'GET /api/workflows',
+      'POST /api/workflows',
+      'PUT /api/workflows/:id',
+      'DELETE /api/workflows/:id',
+      'GET /api/roles',
+      'POST /api/roles',
+      'PUT /api/roles/:id',
+      'DELETE /api/roles/:id',
+      'GET /api/prompts',
+      'POST /api/prompts',
+      'PUT /api/prompts/:id',
+      'DELETE /api/prompts/:id',
+      'GET /api/settings',
+      'PUT /api/settings',
+      'POST /api/execute-python/execute',
+      'GET /api/execute-python/download/:fileId',
+      'GET /api/execute-python/file/:fileId',
+      'GET /api/execute-python/stats',
+      'DELETE /api/execute-python/file/:fileId',
+      'POST /api/execute-python/extract-code'
+    ]
+  });
+});
+
 app.use(errorHandler);
 
 io.on('connection', (socket) => {

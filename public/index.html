@@ -6343,7 +6343,32 @@ ${detailedContext}
                 });
 
                 if (!response.ok) {
-                    console.warn('[processPythonCodeInMessage] Failed to extract code:', response.statusText);
+                    // 尝试获取错误响应的详细信息
+                    let errorDetails = '';
+                    try {
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const errorData = await response.json();
+                            errorDetails = errorData.message || errorData.error || JSON.stringify(errorData);
+                        } else {
+                            errorDetails = await response.text();
+                            if (errorDetails.length > 200) {
+                                errorDetails = errorDetails.substring(0, 200) + '...';
+                            }
+                        }
+                    } catch (e) {
+                        errorDetails = 'Unable to read error response';
+                    }
+                    console.warn('[processPythonCodeInMessage] Failed to extract code:', response.status, response.statusText, '-', errorDetails);
+                    return;
+                }
+
+                // 检查响应内容类型
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const responseText = await response.text();
+                    console.error('[processPythonCodeInMessage] Non-JSON response:', responseText.substring(0, 500));
+                    console.warn('[processPythonCodeInMessage] Failed to extract code: Server returned non-JSON response');
                     return;
                 }
 
@@ -6588,7 +6613,31 @@ ${detailedContext}
                 });
 
                 if (!response.ok) {
-                    throw new Error(`API error: ${response.statusText}`);
+                    // 尝试获取错误响应的详细信息
+                    let errorDetails = '';
+                    try {
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const errorData = await response.json();
+                            errorDetails = errorData.message || errorData.error || JSON.stringify(errorData);
+                        } else {
+                            errorDetails = await response.text();
+                            if (errorDetails.length > 200) {
+                                errorDetails = errorDetails.substring(0, 200) + '...';
+                            }
+                        }
+                    } catch (e) {
+                        errorDetails = 'Unable to read error response';
+                    }
+                    throw new Error(`API error: ${response.status} ${response.statusText} - ${errorDetails}`);
+                }
+
+                // 检查响应内容类型
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const responseText = await response.text();
+                    console.error('[executePythonCode] Non-JSON response:', responseText.substring(0, 500));
+                    throw new Error(`Server returned non-JSON response (Content-Type: ${contentType}). This usually indicates a server error or incorrect API endpoint.`);
                 }
 
                 const result = await response.json();
@@ -6692,7 +6741,31 @@ ${detailedContext}
                 });
 
                 if (!response.ok) {
-                    throw new Error(`API error: ${response.statusText}`);
+                    // 尝试获取错误响应的详细信息
+                    let errorDetails = '';
+                    try {
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const errorData = await response.json();
+                            errorDetails = errorData.message || errorData.error || JSON.stringify(errorData);
+                        } else {
+                            errorDetails = await response.text();
+                            if (errorDetails.length > 200) {
+                                errorDetails = errorDetails.substring(0, 200) + '...';
+                            }
+                        }
+                    } catch (e) {
+                        errorDetails = 'Unable to read error response';
+                    }
+                    throw new Error(`API error: ${response.status} ${response.statusText} - ${errorDetails}`);
+                }
+
+                // 检查响应内容类型
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const responseText = await response.text();
+                    console.error('[executePythonDirective] Non-JSON response:', responseText.substring(0, 500));
+                    throw new Error(`Server returned non-JSON response (Content-Type: ${contentType}). This usually indicates a server error or incorrect API endpoint.`);
                 }
 
                 const result = await response.json();
