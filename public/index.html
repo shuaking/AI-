@@ -1439,19 +1439,27 @@
             color: #555;
         }
 
-        /* 消息样式 */
+        /* 消息样式 - ChatGPT风格优化 */
         .message {
-            max-width: 70%;
-            padding: 12px 16px;
-            border-radius: 16px;
+            max-width: 75%;
+            padding: 16px 20px;
+            border-radius: 18px;
             position: relative;
-            animation: messageSlide 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: messageSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            margin-bottom: 20px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .message:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         @keyframes messageSlide {
             from { 
                 opacity: 0; 
-                transform: translateY(20px) scale(0.95);
+                transform: translateY(15px) scale(0.98);
             }
             to { 
                 opacity: 1; 
@@ -1461,82 +1469,125 @@
 
         .message.user {
             align-self: flex-end;
-            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            background: linear-gradient(135deg, #0084ff, #0056cc);
             color: white;
-            border-bottom-right-radius: 4px;
+            border-bottom-right-radius: 6px;
+            border: none;
+            margin-left: auto;
         }
 
-        .message.role { display: flex !important; visibility: visible !important; opacity: 1 !important;
+        .message.user .message-content {
+            color: white;
+            font-weight: 400;
+        }
+
+        .message.user .message-time {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .message.role { 
+            display: flex !important; 
+            visibility: visible !important; 
+            opacity: 1 !important;
             align-self: flex-start;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-bottom-left-radius: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-bottom-left-radius: 6px;
             position: relative;
             flex-direction: column;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
             max-width: 85%;
+            backdrop-filter: blur(10px);
+        }
+
+        .message.role:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.18);
         }
 
         .message.facilitator {
-            border-color: rgba(255, 215, 0, 0.3);
-            background: rgba(255, 215, 0, 0.05);
+            border-color: rgba(255, 193, 7, 0.3);
+            background: rgba(255, 193, 7, 0.08);
+        }
+
+        .message.facilitator:hover {
+            background: rgba(255, 193, 7, 0.12);
         }
 
         .message.editor {
-            border-color: rgba(156, 163, 175, 0.3);
-            background: rgba(156, 163, 175, 0.05);
+            border-color: rgba(108, 117, 125, 0.3);
+            background: rgba(108, 117, 125, 0.08);
+        }
+
+        .message.editor:hover {
+            background: rgba(108, 117, 125, 0.12);
         }
 
         .message.decision {
             align-self: center;
-            background: rgba(239, 68, 68, 0.1);
-            border: 2px solid rgba(239, 68, 68, 0.3);
-            color: #ef4444;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.1));
+            border: 2px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
             text-align: center;
             font-weight: 600;
-            padding: 16px 24px;
+            padding: 20px 28px;
+            max-width: 60%;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2);
         }
 
         .message-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
+            gap: 12px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .message-avatar {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .message-avatar:hover {
+            transform: scale(1.05);
         }
 
         .message-meta {
             flex: 1;
+            min-width: 0;
         }
 
         .message-name {
             font-weight: 600;
-            color: #e0e0e0;
-            font-size: 0.9rem;
+            color: #f0f0f0;
+            font-size: 0.95rem;
             margin-bottom: 2px;
+            letter-spacing: 0.3px;
         }
 
         .message-role {
-            font-size: 0.75rem;
-            color: #888;
+            font-size: 0.8rem;
+            color: #9ca3af;
+            font-weight: 400;
         }
 
         .message-content {
-            line-height: 1.6;
+            line-height: 1.7;
             font-size: 0.95rem;
             white-space: pre-wrap;
             word-wrap: break-word;
-            color: #e0e0e0;
+            color: #e5e7eb;
+            font-weight: 400;
+            letter-spacing: 0.2px;
         }
 
         /* 引用回复样式 */
@@ -1668,17 +1719,21 @@
         }
 
         .message-time {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             opacity: 0.6;
-            margin-top: 6px;
+            margin-top: 8px;
+            color: #9ca3af;
+            font-weight: 400;
         }
 
         .message-actions {
             display: flex;
-            gap: 8px;
-            margin-top: 8px;
+            gap: 6px;
+            margin-top: 10px;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: opacity 0.25s ease;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .message:hover .message-actions {
@@ -1686,20 +1741,63 @@
         }
 
         .message-action-btn {
-            padding: 4px 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-            color: #aaa;
-            font-size: 0.7rem;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: #9ca3af;
+            font-size: 0.75rem;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 500;
+            backdrop-filter: blur(5px);
         }
 
         .message-action-btn:hover {
-            background: rgba(0, 212, 255, 0.2);
-            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.15);
+            border-color: rgba(0, 212, 255, 0.4);
             color: #00d4ff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 212, 255, 0.2);
+        }
+
+        .message-action-btn:active {
+            transform: translateY(0);
+        }
+
+        .message-action-btn.favorite {
+            background: rgba(251, 191, 36, 0.1);
+            border-color: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .message-action-btn.favorite:hover {
+            background: rgba(251, 191, 36, 0.2);
+            border-color: rgba(251, 191, 36, 0.4);
+            color: #f59e0b;
+            box-shadow: 0 2px 8px rgba(251, 191, 36, 0.2);
+        }
+
+        .message-action-btn.favorite.favorited {
+            background: rgba(251, 191, 36, 0.2);
+            border-color: rgba(251, 191, 36, 0.5);
+            color: #f59e0b;
+        }
+
+        .message-action-btn.copy {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .message-action-btn.copy:hover {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #16a34a;
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
         }
 
         .message-action-btn.download {
@@ -1710,6 +1808,9 @@
 
         .message-action-btn.download:hover {
             background: rgba(74, 222, 128, 0.2);
+            border-color: rgba(74, 222, 128, 0.5);
+            color: #22c55e;
+            box-shadow: 0 2px 8px rgba(74, 222, 128, 0.2);
         }
 
         /* 流式状态指示器 */
@@ -1851,6 +1952,291 @@
             border-color: #00d4ff;
             color: #00d4ff;
             transform: scale(1.05);
+        }
+
+        /* ========== 收藏管理界面 ========== */
+        .favorites-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: rgba(20, 20, 30, 0.98);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(0, 212, 255, 0.3);
+            z-index: 1000;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .favorites-panel.open {
+            right: 0;
+        }
+
+        .favorites-header {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .favorites-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .favorites-count {
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .favorites-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #aaa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.2rem;
+        }
+
+        .favorites-close:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+            transform: scale(1.1);
+        }
+
+        .favorites-actions {
+            padding: 16px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 8px;
+        }
+
+        .favorites-action-btn {
+            flex: 1;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #aaa;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .favorites-action-btn:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+        }
+
+        .favorites-action-btn.danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .favorites-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .favorites-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #666;
+            text-align: center;
+        }
+
+        .favorites-empty-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .favorites-empty-text {
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .favorites-empty-hint {
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        .favorite-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .favorite-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .favorite-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .favorite-item-meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .favorite-item-role {
+            font-weight: 600;
+            color: #00d4ff;
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+        }
+
+        .favorite-item-time {
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .favorite-item-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .favorite-item:hover .favorite-item-actions {
+            opacity: 1;
+        }
+
+        .favorite-item-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #aaa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.7rem;
+        }
+
+        .favorite-item-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+        }
+
+        .favorite-item-content {
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 120px;
+            overflow-y: auto;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px;
+        }
+
+        .favorite-item-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .favorite-item-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+        }
+
+        .favorite-item-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        .favorite-item-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 收藏按钮触发器 */
+        .favorites-trigger {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(251, 191, 36, 0.3);
+            z-index: 100;
+            font-size: 1.2rem;
+        }
+
+        .favorites-trigger:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 30px rgba(251, 191, 36, 0.4);
+        }
+
+        .favorites-trigger.has-favorites::after {
+            content: attr(data-count);
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #ef4444;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border: 2px solid rgba(20, 20, 30, 0.98);
         }
 
         /* 角色选择器 */
@@ -2713,12 +3099,47 @@
         </div>
     </div>
 
+    <!-- 收藏管理面板 -->
+    <div class="favorites-panel" id="favoritesPanel">
+        <div class="favorites-header">
+            <div class="favorites-title">
+                <span>⭐ 收藏的消息</span>
+                <span class="favorites-count" id="favoritesCount">0</span>
+            </div>
+            <div class="favorites-close" id="favoritesClose" title="关闭 [Esc]">✕</div>
+        </div>
+        <div class="favorites-actions">
+            <button class="favorites-action-btn" id="exportFavorites" title="导出收藏">
+                <span>📥</span>
+                <span>导出</span>
+            </button>
+            <button class="favorites-action-btn" id="copyAllFavorites" title="复制所有">
+                <span>📋</span>
+                <span>复制</span>
+            </button>
+            <button class="favorites-action-btn danger" id="clearFavorites" title="清空收藏">
+                <span>🗑️</span>
+                <span>清空</span>
+            </button>
+        </div>
+        <div class="favorites-content" id="favoritesContent">
+            <div class="favorites-empty">
+                <div class="favorites-empty-icon">⭐</div>
+                <div class="favorites-empty-text">暂无收藏的消息</div>
+                <div class="favorites-empty-hint">点击消息旁的星标按钮来收藏重要内容</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 收藏按钮触发器 -->
+    <div class="favorites-trigger" id="favoritesTrigger" title="查看收藏 [F]">⭐</div>
+
     <!-- 浮动提示 -->
     <div class="tooltip" id="tooltip"></div>
 
     <!-- 键盘快捷键提示 -->
     <div class="shortcut-hint" id="shortcutHint">
-        快捷键：M-最小化 | H-隐藏 | Space-切换 | Esc-显示
+        快捷键：M-最小化 | H-隐藏 | F-收藏 | Space-切换 | Esc-显示/关闭
     </div>
 
     <!-- Emoji选择器 -->
@@ -2794,6 +3215,7 @@
             customApiConfigs: {},
             currentCustomApi: null,
             lastStreamUpdate: 0,
+            favorites: [], // 收藏的消息列表
             performanceMetrics: {
                 messageCount: 0,
                 averageResponseTime: 0,
@@ -3090,12 +3512,63 @@
             updateRoleStatus();
             initCustomApi();
             initErrorHandling();
-            
+            initFavorites();
+
             // 延迟显示快捷键提示
             setTimeout(() => {
                 showShortcutHint();
             }, 2000);
         });
+
+        // 初始化收藏功能
+        function initFavorites() {
+            // 加载收藏数据
+            loadFavorites();
+            
+            // 更新收藏界面
+            updateFavoritesUI();
+            
+            // 绑定事件监听器
+            const favoritesTrigger = document.getElementById('favoritesTrigger');
+            const favoritesClose = document.getElementById('favoritesClose');
+            const exportFavorites = document.getElementById('exportFavorites');
+            const copyAllFavorites = document.getElementById('copyAllFavorites');
+            const clearFavorites = document.getElementById('clearFavorites');
+            
+            addEventListenerSafe(favoritesTrigger, 'click', toggleFavoritesPanel);
+            addEventListenerSafe(favoritesClose, 'click', closeFavoritesPanel);
+            addEventListenerSafe(exportFavorites, 'click', () => exportFavorites());
+            addEventListenerSafe(copyAllFavorites, 'click', copyAllFavorites);
+            addEventListenerSafe(clearFavorites, 'click', clearFavorites);
+            
+            // 添加键盘快捷键支持
+            document.addEventListener('keydown', (e) => {
+                // F键打开/关闭收藏面板
+                if (e.key === 'f' || e.key === 'F') {
+                    // 只在非输入状态下响应
+                    const activeElement = document.activeElement;
+                    if (activeElement && (
+                        activeElement.tagName === 'INPUT' || 
+                        activeElement.tagName === 'TEXTAREA' || 
+                        activeElement.contentEditable === 'true'
+                    )) {
+                        return;
+                    }
+                    e.preventDefault();
+                    toggleFavoritesPanel();
+                }
+                
+                // ESC键关闭收藏面板
+                if (e.key === 'Escape') {
+                    const panel = document.getElementById('favoritesPanel');
+                    if (panel.classList.contains('open')) {
+                        closeFavoritesPanel();
+                    }
+                }
+            });
+            
+            console.log('[initFavorites] Favorites functionality initialized');
+        }
 
         // 异步加载数据
         async function initializeData() {
@@ -6322,6 +6795,9 @@ ${detailedContext}
             const message = document.createElement('div');
             message.className = 'message user';
             
+            const messageId = `user-msg-${Date.now()}`;
+            message.id = messageId;
+            
             const time = new Date().toLocaleTimeString('zh-CN', { 
                 hour: '2-digit', 
                 minute: '2-digit' 
@@ -6330,11 +6806,22 @@ ${detailedContext}
             message.innerHTML = `
                 <div class="message-content">${escapeHtml(data.content)}</div>
                 <div class="message-time">${data.sender} · ${time}</div>
+                <div class="message-actions">
+                    <button class="message-action-btn copy" onclick="copyMessage('${messageId}')" title="复制消息">
+                        <span>📋</span>
+                        <span>复制</span>
+                    </button>
+                    <button class="message-action-btn favorite" onclick="toggleFavorite('${messageId}', 'user')" title="收藏消息">
+                        <span>⭐</span>
+                        <span>收藏</span>
+                    </button>
+                </div>
             `;
             
             state.messages.push({
                 type: 'user',
                 ...data,
+                messageId,
                 timestamp: Date.now()
             });
             
@@ -6392,6 +6879,16 @@ ${detailedContext}
                 </div>
                 <div class="message-content">${escapeHtml(data.content)}</div>
                 <div class="message-time">${time}</div>
+                <div class="message-actions">
+                    <button class="message-action-btn copy" onclick="copyMessage('${messageId}')" title="复制消息">
+                        <span>📋</span>
+                        <span>复制</span>
+                    </button>
+                    <button class="message-action-btn favorite" onclick="toggleFavorite('${messageId}', 'role')" title="收藏消息">
+                        <span>⭐</span>
+                        <span>收藏</span>
+                    </button>
+                </div>
             `;
             
             // 避免重复保存
@@ -6438,6 +6935,300 @@ ${detailedContext}
             if (contentEl) {
                 navigator.clipboard.writeText(contentEl.textContent);
                 showNotification('已复制到剪贴板', 'success');
+            }
+        }
+
+        // ========== 收藏功能 ==========
+        
+        // 切换收藏状态
+        function toggleFavorite(messageId, messageType) {
+            const messageEl = document.getElementById(messageId);
+            const favoriteBtn = messageEl.querySelector('.favorite');
+            const contentEl = messageEl.querySelector('.message-content');
+            const timeEl = messageEl.querySelector('.message-time');
+            
+            if (!contentEl || !timeEl) {
+                console.error('[toggleFavorite] Message elements not found');
+                return;
+            }
+            
+            // 构建收藏数据
+            let favoriteData = {
+                messageId,
+                type: messageType,
+                content: contentEl.textContent,
+                time: timeEl.textContent,
+                timestamp: Date.now()
+            };
+            
+            // 如果是角色消息，添加角色信息
+            if (messageType === 'role') {
+                const nameEl = messageEl.querySelector('.message-name');
+                const roleEl = messageEl.querySelector('.message-role');
+                const avatarEl = messageEl.querySelector('.message-avatar');
+                
+                favoriteData.roleName = nameEl ? nameEl.textContent : '未知角色';
+                favoriteData.roleTitle = roleEl ? roleEl.textContent : '';
+                favoriteData.roleEmoji = avatarEl ? avatarEl.textContent : '🤖';
+            }
+            
+            // 查找是否已收藏
+            const existingIndex = state.favorites.findIndex(fav => fav.messageId === messageId);
+            
+            if (existingIndex > -1) {
+                // 取消收藏
+                state.favorites.splice(existingIndex, 1);
+                favoriteBtn.classList.remove('favorited');
+                favoriteBtn.innerHTML = '<span>⭐</span><span>收藏</span>';
+                showNotification('已取消收藏', 'info');
+            } else {
+                // 添加收藏
+                state.favorites.push(favoriteData);
+                favoriteBtn.classList.add('favorited');
+                favoriteBtn.innerHTML = '<span>⭐</span><span>已收藏</span>';
+                showNotification('已添加到收藏', 'success');
+            }
+            
+            // 保存到本地存储
+            saveFavorites();
+            // 更新收藏界面
+            updateFavoritesUI();
+        }
+        
+        // 保存收藏到本地存储
+        function saveFavorites() {
+            try {
+                localStorage.setItem('favorites', JSON.stringify(state.favorites));
+                console.log('[saveFavorites] Saved favorites to localStorage:', state.favorites.length);
+            } catch (error) {
+                console.error('[saveFavorites] Failed to save favorites:', error);
+                showNotification('保存收藏失败', 'error');
+            }
+        }
+        
+        // 从本地存储加载收藏
+        function loadFavorites() {
+            try {
+                const saved = localStorage.getItem('favorites');
+                if (saved) {
+                    state.favorites = JSON.parse(saved);
+                    console.log('[loadFavorites] Loaded favorites from localStorage:', state.favorites.length);
+                    
+                    // 延迟更新已有消息的收藏状态
+                    setTimeout(() => {
+                        updateExistingMessagesFavoriteStatus();
+                    }, 100);
+                }
+            } catch (error) {
+                console.error('[loadFavorites] Failed to load favorites:', error);
+                state.favorites = [];
+            }
+        }
+        
+        // 更新已有消息的收藏状态
+        function updateExistingMessagesFavoriteStatus() {
+            state.favorites.forEach(fav => {
+                const messageEl = document.getElementById(fav.messageId);
+                if (messageEl) {
+                    const favoriteBtn = messageEl.querySelector('.favorite');
+                    if (favoriteBtn) {
+                        favoriteBtn.classList.add('favorited');
+                        favoriteBtn.innerHTML = '<span>⭐</span><span>已收藏</span>';
+                    }
+                }
+            });
+        }
+        
+        // 更新收藏界面
+        function updateFavoritesUI() {
+            const favoritesCount = document.getElementById('favoritesCount');
+            const favoritesContent = document.getElementById('favoritesContent');
+            const favoritesTrigger = document.getElementById('favoritesTrigger');
+            
+            // 更新计数
+            favoritesCount.textContent = state.favorites.length;
+            
+            // 更新触发器状态
+            if (state.favorites.length > 0) {
+                favoritesTrigger.classList.add('has-favorites');
+                favoritesTrigger.setAttribute('data-count', state.favorites.length);
+            } else {
+                favoritesTrigger.classList.remove('has-favorites');
+                favoritesTrigger.removeAttribute('data-count');
+            }
+            
+            // 更新收藏列表
+            if (state.favorites.length === 0) {
+                favoritesContent.innerHTML = `
+                    <div class="favorites-empty">
+                        <div class="favorites-empty-icon">⭐</div>
+                        <div class="favorites-empty-text">暂无收藏的消息</div>
+                        <div class="favorites-empty-hint">点击消息旁的星标按钮来收藏重要内容</div>
+                    </div>
+                `;
+            } else {
+                favoritesContent.innerHTML = state.favorites.map(fav => `
+                    <div class="favorite-item" data-favorite-id="${fav.messageId}">
+                        <div class="favorite-item-header">
+                            <div class="favorite-item-meta">
+                                <div class="favorite-item-role">
+                                    ${fav.roleEmoji || '📝'} ${fav.roleName || fav.type === 'user' ? '用户' : '系统消息'}
+                                </div>
+                                <div class="favorite-item-time">${fav.time}</div>
+                            </div>
+                            <div class="favorite-item-actions">
+                                <button class="favorite-item-btn" onclick="copyFavoriteContent('${fav.messageId}')" title="复制内容">
+                                    📋
+                                </button>
+                                <button class="favorite-item-btn" onclick="removeFavorite('${fav.messageId}')" title="删除收藏">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                        <div class="favorite-item-content">${escapeHtml(fav.content)}</div>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // 显示/隐藏收藏面板
+        function toggleFavoritesPanel() {
+            const panel = document.getElementById('favoritesPanel');
+            panel.classList.toggle('open');
+        }
+        
+        // 关闭收藏面板
+        function closeFavoritesPanel() {
+            const panel = document.getElementById('favoritesPanel');
+            panel.classList.remove('open');
+        }
+        
+        // 复制收藏内容
+        function copyFavoriteContent(messageId) {
+            const favorite = state.favorites.find(fav => fav.messageId === messageId);
+            if (favorite) {
+                navigator.clipboard.writeText(favorite.content).then(() => {
+                    showNotification('已复制收藏内容', 'success');
+                }).catch(err => {
+                    console.error('[copyFavoriteContent] Failed to copy:', err);
+                    showNotification('复制失败', 'error');
+                });
+            }
+        }
+        
+        // 删除收藏
+        function removeFavorite(messageId) {
+            const index = state.favorites.findIndex(fav => fav.messageId === messageId);
+            if (index > -1) {
+                state.favorites.splice(index, 1);
+                saveFavorites();
+                updateFavoritesUI();
+                
+                // 同时更新消息中的收藏按钮状态
+                const messageEl = document.getElementById(messageId);
+                if (messageEl) {
+                    const favoriteBtn = messageEl.querySelector('.favorite');
+                    if (favoriteBtn) {
+                        favoriteBtn.classList.remove('favorited');
+                        favoriteBtn.innerHTML = '<span>⭐</span><span>收藏</span>';
+                    }
+                }
+                
+                showNotification('已删除收藏', 'info');
+            }
+        }
+        
+        // 导出收藏
+        function exportFavorites() {
+            if (state.favorites.length === 0) {
+                showNotification('暂无收藏可导出', 'warning');
+                return;
+            }
+            
+            const exportData = {
+                exportTime: new Date().toISOString(),
+                totalCount: state.favorites.length,
+                favorites: state.favorites
+            };
+            
+            const content = `# 收藏的消息导出
+
+导出时间：${new Date().toLocaleString('zh-CN')}
+总计：${state.favorites.length} 条收藏
+
+---
+
+${state.favorites.map((fav, index) => `
+## ${index + 1}. ${fav.roleName || fav.type === 'user' ? '用户' : '系统消息'}
+
+**时间：** ${fav.time}
+**类型：** ${fav.type === 'user' ? '用户消息' : fav.roleName || '系统消息'}
+
+**内容：**
+${fav.content}
+
+---
+`).join('')}
+`;
+            
+            // 创建下载
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `收藏消息_${new Date().toISOString().slice(0, 10)}.md`;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('收藏已导出', 'success');
+        }
+        
+        // 复制所有收藏
+        function copyAllFavorites() {
+            if (state.favorites.length === 0) {
+                showNotification('暂无收藏可复制', 'warning');
+                return;
+            }
+            
+            const allContent = state.favorites.map((fav, index) => 
+                `${index + 1}. ${fav.roleName || fav.type === 'user' ? '用户' : '系统消息'} (${fav.time}):\n${fav.content}`
+            ).join('\n\n---\n\n');
+            
+            navigator.clipboard.writeText(allContent).then(() => {
+                showNotification(`已复制 ${state.favorites.length} 条收藏`, 'success');
+            }).catch(err => {
+                console.error('[copyAllFavorites] Failed to copy:', err);
+                showNotification('复制失败', 'error');
+            });
+        }
+        
+        // 清空收藏
+        function clearFavorites() {
+            if (state.favorites.length === 0) {
+                showNotification('暂无收藏可清空', 'warning');
+                return;
+            }
+            
+            if (confirm(`确定要清空所有 ${state.favorites.length} 条收藏吗？此操作不可恢复。`)) {
+                // 重置所有消息中的收藏按钮状态
+                state.favorites.forEach(fav => {
+                    const messageEl = document.getElementById(fav.messageId);
+                    if (messageEl) {
+                        const favoriteBtn = messageEl.querySelector('.favorite');
+                        if (favoriteBtn) {
+                            favoriteBtn.classList.remove('favorited');
+                            favoriteBtn.innerHTML = '<span>⭐</span><span>收藏</span>';
+                        }
+                    }
+                });
+                
+                state.favorites = [];
+                saveFavorites();
+                updateFavoritesUI();
+                showNotification('已清空所有收藏', 'info');
             }
         }
 
