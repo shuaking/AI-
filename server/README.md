@@ -34,6 +34,8 @@ JSON files in `server/data/`:
 - `prompts.json`: Prompt templates
 - `settings.json`: Global variables and custom API configurations
 
+> ℹ️ On startup the server verifies that each of these files exists and contains valid JSON. Missing, empty, or corrupted files are automatically regenerated from the bundled templates (or fallback schemas) so fresh deployments never return empty API payloads.
+
 See `data/README.md` for detailed schema documentation.
 
 ## API Endpoints

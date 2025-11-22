@@ -24,27 +24,62 @@ const REQUIRED_DATA_FILES = [
   { name: 'settings.json', fallback: JSON.stringify({ globalVariables: {}, customApiConfigs: {} }, null, 2) }
 ];
 
+function areSamePath(pathA, pathB) {
+  return path.resolve(pathA) === path.resolve(pathB);
+}
+
+function analyzeDataFile(destinationPath) {
+  if (!fs.existsSync(destinationPath)) {
+    return { shouldInit: true, reason: 'missing' };
+  }
+
+  try {
+    const content = fs.readFileSync(destinationPath, 'utf8');
+    if (!content.trim()) {
+      return { shouldInit: true, reason: 'empty' };
+    }
+
+    JSON.parse(content);
+    return { shouldInit: false };
+  } catch (error) {
+    return { shouldInit: true, reason: 'invalid', error };
+  }
+}
+
 function initializeDataDirectory(targetDir) {
   REQUIRED_DATA_FILES.forEach(({ name, fallback }) => {
     const destinationPath = path.join(targetDir, name);
+    const templatePath = path.join(DATA_TEMPLATE_DIR, name);
+    const { shouldInit, reason, error } = analyzeDataFile(destinationPath);
 
-    if (fs.existsSync(destinationPath)) {
+    if (!shouldInit) {
       return;
     }
 
-    const templatePath = path.join(DATA_TEMPLATE_DIR, name);
+    const action = reason === 'missing' ? 'Initialized' : 'Reinitialized';
+
+    if (reason && reason !== 'missing') {
+      const reasonDetails = error ? `${reason} (${error.message})` : reason;
+      console.warn(`[Server] Data file ${name} is ${reasonDetails}, regenerating`);
+    }
+
+    const templateExists = fs.existsSync(templatePath);
+    const pathsMatch = templateExists && areSamePath(templatePath, destinationPath);
 
     try {
-      if (fs.existsSync(templatePath)) {
+      if (templateExists && !pathsMatch) {
         fs.copyFileSync(templatePath, destinationPath);
-        console.log(`[Server] Initialized data file ${name} from template directory`);
+        console.log(`[Server] ${action} data file ${name} from template directory`);
+      } else if (templateExists && pathsMatch) {
+        fs.writeFileSync(destinationPath, fallback, 'utf8');
+        console.log(`[Server] ${action} data file ${name} with default schema (template path matches destination)`);
       } else {
         fs.writeFileSync(destinationPath, fallback, 'utf8');
-        console.log(`[Server] Created data file ${name} with default schema`);
+        console.log(`[Server] ${action} data file ${name} with default schema`);
       }
-    } catch (error) {
-      console.error(`[Server] Failed to initialize data file ${name}:`, error);
-      throw error;
+    } catch (initError) {
+      console.error(`[Server] Failed to initialize data file ${name}:`, initError);
+      throw initError;
     }
   });
 }
