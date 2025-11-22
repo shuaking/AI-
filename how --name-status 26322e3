@@ -1,0 +1,28 @@
+*   [33m26322e3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmerge-fix-pr9-deploy-config-e01-into-main-e01[m[33m)[m Merge fix-pr9-merge-conflicts-deploy-config-e01 into main
+[31m|[m[32m\[m  
+[31m|[m * [33md2562f4[m[33m ([m[1;31morigin/fix-pr9-merge-conflicts-deploy-config-e01[m[33m)[m fix(pr9): resolve merge conflicts and integrate deployment configurations
+[31m|[m[31m/[m  
+* [33mb17b14f[m[33m ([m[1;34mgrafted[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge pull request #28 from shuaking/chore-unify-npm-scripts-cross-env
+* [33maa36ef5[m[33m ([m[1;31morigin/chore-unify-npm-scripts-cross-env[m[33m)[m chore(scripts): unify npm environment variable syntax across platforms with cross-env
+*   [33m2eebc1b[m Merge pull request #27 from shuaking/docs/local-dev-setup-readme-zh
+[34m|[m[35m\[m  
+[34m|[m * [33mbb3bfa9[m[33m ([m[1;31morigin/docs/local-dev-setup-readme-zh[m[33m)[m docs(readme): add comprehensive local development environment setup guide
+[34m|[m[34m/[m  
+*   [33m1e63273[m Merge pull request #26 from shuaking/bugfix-roles-ignore-context-diagnose-fix
+[36m|[m[1;31m\[m  
+[36m|[m * [33ma0a6776[m[33m ([m[1;31morigin/bugfix-roles-ignore-context-diagnose-fix[m[33m)[m fix(llm/context): ensure roles accurately reference context by adding structured system message
+[36m|[m[36m/[m  
+[36m|[m * [33mf627473[m[33m ([m[1;31morigin/fix/api-execute-python-json-response[m[33m)[m fix(api,frontend): robustly handle API error responses and ensure JSON for 404
+[36m|[m[36m/[m  
+*   [33m5e7963c[m Merge pull request #24 from shuaking/docs/python-sandbox-readme-improved
+[1;33m|[m[1;34m\[m  
+[1;33m|[m * [33mf5e0876[m[33m ([m[1;31morigin/docs/python-sandbox-readme-improved[m[33m)[m docs(readme): enhance Python execution sandbox documentation
+[1;33m|[m[1;33m/[m  
+*   [33m08740f8[m Merge pull request #23 from shuaking/docs/add-python-exec-sandbox-readme-e01
+[1;35m|[m[1;36m\[m  
+[1;35m|[m * [33m66ae186[m[33m ([m[1;31morigin/docs/add-python-exec-sandbox-readme-e01[m[33m)[m docs(readme): add comprehensive Python execution sandbox usage documentation
+[1;35m|[m[1;35m/[m  
+*   [33m3e0622a[m Merge pull request #22 from shuaking/fix/python-exec-not-responding
+[31m|[m[32m\[m  
+[31m|[m * [33m05ad7da[m[33m ([m[1;31morigin/fix/python-exec-not-responding[m[33m)[m fix(frontend/python-exec): robust integration of Python code execution UI in chat messages
+[31m|[m[31m/[m  
