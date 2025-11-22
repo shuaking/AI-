@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const fs = require('fs');
+const path = require('path');
 const config = require('./config');
 
 const JsonStore = require('./utils/jsonStore');
@@ -14,6 +15,39 @@ const createRolesRouter = require('./routes/roles');
 const createPromptsRouter = require('./routes/prompts');
 const createSettingsRouter = require('./routes/settings');
 const createPythonExecutionRouter = require('./routes/pythonExecution');
+
+const DATA_TEMPLATE_DIR = path.join(__dirname, 'data');
+const REQUIRED_DATA_FILES = [
+  { name: 'workflows.json', fallback: JSON.stringify({}, null, 2) },
+  { name: 'roles.json', fallback: JSON.stringify([], null, 2) },
+  { name: 'prompts.json', fallback: JSON.stringify([], null, 2) },
+  { name: 'settings.json', fallback: JSON.stringify({ globalVariables: {}, customApiConfigs: {} }, null, 2) }
+];
+
+function initializeDataDirectory(targetDir) {
+  REQUIRED_DATA_FILES.forEach(({ name, fallback }) => {
+    const destinationPath = path.join(targetDir, name);
+
+    if (fs.existsSync(destinationPath)) {
+      return;
+    }
+
+    const templatePath = path.join(DATA_TEMPLATE_DIR, name);
+
+    try {
+      if (fs.existsSync(templatePath)) {
+        fs.copyFileSync(templatePath, destinationPath);
+        console.log(`[Server] Initialized data file ${name} from template directory`);
+      } else {
+        fs.writeFileSync(destinationPath, fallback, 'utf8');
+        console.log(`[Server] Created data file ${name} with default schema`);
+      }
+    } catch (error) {
+      console.error(`[Server] Failed to initialize data file ${name}:`, error);
+      throw error;
+    }
+  });
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -27,6 +61,7 @@ const dataDir = config.dataDir;
 
 try {
   fs.mkdirSync(dataDir, { recursive: true });
+  initializeDataDirectory(dataDir);
 } catch (error) {
   console.error(`[Server] Failed to initialize data directory at ${dataDir}:`, error);
   process.exit(1);
